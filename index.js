@@ -134,8 +134,6 @@ Statsd.prototype.start = function start(callback) {
 
   var channel = ipc.attach(onRequest, this.child);
 
-  this.child.unref();
-
   function onRequest(req, respond) {
     debug('statsd receiving: %j', req);
 
@@ -150,7 +148,15 @@ Statsd.prototype.start = function start(callback) {
     callback();
   }
 
+  this.child.unref();
+  // XXX(sam) no documented way to unref the ipc channel :-(
+  this.child._channel.unref();
+
   if (this.silent) {
+    this.child.stdin.unref();
+    this.child.stdout.unref();
+    this.child.stderr.unref();
+
     // fork() documents an 'encoding' option, but doesn't implement it :-(
     this.child.stdout.setEncoding('utf-8');
     this.child.stderr.setEncoding('utf-8');
