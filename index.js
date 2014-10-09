@@ -87,7 +87,7 @@ Statsd.prototype.backend = function backend(url) {
       backend = "./backends/console";
       config = {
         console: {
-          prettyprint: 'color' in _.query && _.query.color !== 'false'
+          prettyprint: 'pretty' in _.query && _.query.pretty !== 'false'
         }
       };
       break;
@@ -212,10 +212,10 @@ Statsd.prototype.start = function start(callback) {
     this.child.stdout.setEncoding('utf-8');
     this.child.stderr.setEncoding('utf-8');
     this.child.stdout.on('data', function(data) {
-      debug('stdout:', data.trim());
+      debug('stdout: <%s>', data.trim());
     });
     this.child.stderr.on('data', function(data) {
-      debug('stderr:', data.trim());
+      debug('stderr: <%s>', data.trim());
     });
   }
 

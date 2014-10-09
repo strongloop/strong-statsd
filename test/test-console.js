@@ -15,10 +15,10 @@ function checkUrl(url, color) {
 checkUrl('console', false);
 checkUrl('console:', false);
 checkUrl('console:?', false);
-checkUrl('console:?color', true);
-checkUrl('console:?color=true', true);
-checkUrl('console:?color=anything', true);
-checkUrl('console:?color=false', false);
+checkUrl('console:?pretty', true);
+checkUrl('console:?pretty=true', true);
+checkUrl('console:?pretty=anything', true);
+checkUrl('console:?pretty=false', false);
 
 tap.test('console output', function(t) {
   var server = statsd({silent: true});
@@ -34,8 +34,9 @@ tap.test('console output', function(t) {
   var jsonSeen;
   if (server.child.stdout) {
     server.child.stdout.on('data', function(line) {
-      flushingStats = flushingStats || /Flushing stats at/.test(line);
-      jsonSeen = jsonSeen || /counters: { '/.test(line);
+      flushingStats = flushingStats || /stats=/.test(line);
+      jsonSeen = jsonSeen || /"counters":/.test(line);
+      console.log('line<%s> %j %j', line, flushingStats, jsonSeen);
 
       if (flushingStats && jsonSeen)
         server.stop();

@@ -33,8 +33,9 @@ Backend URL formats:
   backends below. In other words, you can use backends, or raw statsd, but not
   both (for now).
 
-- `console:[?color[=<true|false>]]`: json dump to console, mostly useful for
-  testing and debugging
+- `console:[?pretty[=<true|false>]]`: json dump to console, mostly useful for
+  testing and debugging. Pretty output is formatted as multi-line with color,
+  otherwise it's single line.
 
 - `graphite://[<host>][:<port>]`: forward to
   [graphite](http://graphite.readthedocs.org/en/latest/), host defaults to
