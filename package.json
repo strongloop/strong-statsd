@@ -21,7 +21,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "tap --timeout=200 ./test/test-*"
+    "test": "tap --timeout=100 ./test/test-*"
   },
   "devDependencies": {
     "tap": "git://github.com/strongloop-forks/node-tap#production"
@@ -29,6 +29,7 @@
   "dependencies": {
     "debug": "^2.0.0",
     "node-syslog": "^1.1.7",
+    "strong-agent-statsd": "^1.0.1",
     "strong-control-channel": "^1.0.0",
     "strong-fork-statsd": "^1.0.0"
   }

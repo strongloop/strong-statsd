@@ -26,6 +26,8 @@ tap.test('console output', function(t) {
 
   server.start(function(er) {
     t.ifError(er);
+    t.assert(server.port > 0);
+    t.assert(/^statsd:\/\/:\d+\/$/.test(server.url), server.url);
   });
 
   var flushingStats;
@@ -45,4 +47,8 @@ tap.test('console output', function(t) {
     t.assert(jsonSeen, 'flushing counter json');
     t.end();
   });
+});
+
+process.on('exit', function() {
+  console.log('PASS');
 });

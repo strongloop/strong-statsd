@@ -1,5 +1,4 @@
 var assert = require('assert');
-var dgram = require('dgram');
 var net = require('net');
 var statsd = require('../');
 var tap = require('tap');
@@ -30,7 +29,6 @@ checkUrl('graphite:example:', 2003, 'example');
 
 tap.test('graphite output', function(t) {
   var graphite = net.createServer(onConnect).listen(0);
-  var udp = dgram.createSocket('udp4');
 
   function onConnect(sock) {
     sock.on('data', function(data) {
@@ -39,7 +37,6 @@ tap.test('graphite output', function(t) {
 
       if (sawFoo) {
         graphite.close(function() { console.log('graphite: closed'); });
-        udp.close();
         server.stop(function() { console.log('statsd: closed'); });
         t.end();
       }
@@ -57,12 +54,12 @@ tap.test('graphite output', function(t) {
   var server = statsd({silent: false, debug: true});
 
   function onStart(er) {
-    var msg = new Buffer('foo:1|c');
-
     t.ifError(er);
-    if (er) throw er;
-    assert(server.port > 0);
-    console.log('send `%s` to %d', msg, server.port);
-    udp.send(msg, 0, msg.length, server.port, '127.0.0.1');
+    t.assert(server.port > 0);
+    t.assert(server.send('foo.count', 19));
   }
+});
+
+process.on('exit', function() {
+  console.log('PASS');
 });

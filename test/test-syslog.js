@@ -48,3 +48,7 @@ tap.test('syslog output', function(t) {
     t.end();
   });
 });
+
+process.on('exit', function() {
+  console.log('PASS');
+});

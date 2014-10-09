@@ -5,9 +5,10 @@ var fs = require('fs');
 var ipc = require('strong-control-channel/process');
 var parse = require('url').parse;
 var path = require('path');
+var sender = require('strong-agent-statsd');
 var stats = require.resolve('strong-fork-statsd/stats.js');
-var util = require('util');
 var syslog = require('node-syslog'); // FIXME protect, or use strong-fork-syslog
+var util = require('util');
 
 // Config template:
 // {
@@ -33,10 +34,17 @@ var syslog = require('node-syslog'); // FIXME protect, or use strong-fork-syslog
 // }
 
 function Statsd(options) {
+  if (!(this instanceof Statsd))
+      return new Statsd(options);
+
   options = util._extend({}, options);
   this.port = 0;
   this.debug = !!options.debug;
   this.silent = !!options.silent;
+  this.expandScope = options.expandScope;
+  this.statsdScope = options.scope || '';
+  this.statsdHost = null;
+  this.statsdPort = null;
   this.configFile = path.resolve('.statsd.json');
   this.config = {
     port: this.port,
@@ -44,6 +52,7 @@ function Statsd(options) {
     dumpMessages: this.debug,
     backends: [], // No backends is valid and useful, see syslog config
   };
+  this._send = null;
 }
 
 Statsd.prototype.backend = function backend(url) {
@@ -53,9 +62,27 @@ Statsd.prototype.backend = function backend(url) {
   if (!_.protocol) {
     // bare word, such as 'console', or 'statsd'
     _.protocol = url + ':';
+    _.pathname = ''; // the bare word also shows up here, clear it
   }
 
   switch (_.protocol) {
+    case 'statsd:': {
+      if (this.config.backends.length) {
+        return {error: 'statsd is incompatible with other backends'};
+      }
+      this.statsdHost = _.hostname || 'localhost';
+      this.statsdPort = _.port || 8125;
+      var scope = _.pathname;
+      if (!scope || scope === '/') {
+        // leave as default
+      } else {
+        // skip the leading '/'
+        this.statsdScope = scope.slice(1);
+      }
+
+      // We won't be using a backend, return immediately.
+      return this;
+    }
     case 'console:': {
       backend = "./backends/console";
       config = {
@@ -110,8 +137,11 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     default:
-      return;
+      return {error: 'url format unknown'};
   }
+
+  if (this.statsdHost)
+    return {error: 'statsd is incompatible with other backends'};
 
   if (backend)
     this.config.backends.push(backend);
@@ -122,6 +152,18 @@ Statsd.prototype.backend = function backend(url) {
 
 Statsd.prototype.start = function start(callback) {
   var self = this;
+  var scope = this.statsdScope;
+  scope = this.expandScope ? this.expandScope(scope) : scope;
+
+  if (this.statsdHost) {
+    this._send = sender({
+      port: this.statsdPort,
+      host: this.statsdHost,
+      scope: scope,
+    });
+    process.nextTick(callback);
+    return this;
+  }
 
   try {
     debug('statsd configfile %s: %j', this.configFile, this.config);
@@ -145,6 +187,15 @@ Statsd.prototype.start = function start(callback) {
     self.family = req.family;
 
     respond({message: 'ok'});
+
+    self._send = sender({
+      port: self.port,
+      host: 'localhost',
+      scope: scope,
+    });
+
+    self.url = util.format('statsd://:%d/%s', self.port, self.statsdScope);
+
     callback();
   }
 
@@ -168,17 +219,25 @@ Statsd.prototype.start = function start(callback) {
     });
   }
 
-  return this.child;
+  return this;
+};
+
+Statsd.prototype.send = function send(name, value) {
+  if (this._send) {
+    this._send(name, value);
+    return true;
+  }
+  return false;
 };
 
 Statsd.prototype.stop = function stop(callback) {
+  callback = callback || function(){};
+  if (!this.child) {
+    process.nextTick(callback);
+    return;
+  }
   this.child.kill();
-  if (callback)
-    this.child.once('exit', callback);
+  this.child.once('exit', callback);
 };
 
-function statsd(options) {
-  return new Statsd(options);
-}
-
-module.exports = statsd;
+module.exports = Statsd;

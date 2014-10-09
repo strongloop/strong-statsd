@@ -1,24 +1,21 @@
 var assert = require('assert');
-var statsd = require('../')({debug: true, silent:  true});
-var udp = require('dgram').createSocket('udp4');
+var Statsd = require('../');
+var statsd = new Statsd({debug: true, silent: true});
 
 assert.equal(statsd.port, 0);
 
-var msg = new Buffer('foo:1|c');
+var metric = 'foo.count';
 
 statsd.start(function(er) {
   console.log('started on', statsd.port);
   if (er) throw er;
   assert(statsd.port > 0);
-  console.log('send `%s` to %d', msg, statsd.port);
-  udp.send(msg, 0, msg.length, statsd.port, '127.0.0.1', function() {
-    console.log('sent:', arguments);
-  });
+  console.log('send `%s` to %d', metric, statsd.port);
+  statsd.send(metric, 12);
 });
 
 statsd.child.stdout.on('data', function(data) {
-  if (data.indexOf(msg) >= 0) {
-    udp.close();
+  if (data.indexOf(metric) >= 0) {
     statsd.stop();
   }
 });

@@ -17,12 +17,21 @@ Options:
 
 - silent: whether to pipe stdio to parent, default is false, log to stdout
 - debug: cause statsd to log debug messages
+- scope: prefix to add before all metric names (default is `""`, but also,
+  if the `statsd:` backend URL is used, it can provide a scope that will
+  override this option)
+- expandScope: function to call on scope before using it as a prefix
 
 ### statsd.backend(url)
 
 Specify one or more backends.
 
 Backend URL formats:
+
+- `statsd://[<host>][:<port>][/<scope>]`: publish to a statsd server, this isn't
+  a backend, its a direct UDP publish, and it can not be combined with the other
+  backends below. In other words, you can use backends, or raw statsd, but not
+  both (for now).
 
 - `console:[?color[=<true|false>]]`: json dump to console, mostly useful for
   testing and debugging
@@ -49,6 +58,19 @@ statsd port is known.
 
 The port that the statsd server is listening on.
 
+### statsd.url
+
+A `statsd:` URL that contains the PORT and (unexpanded) scope that should be
+published to. The publish is usually done by `.send()`, but this URL may
+be useful for display or debug purposes.
+
+### statsd.send(name, value)
+
+Send statsd metric with name and value. Metrics are discarded until statsd
+is started.
+
 ### statsd.stop(callback)
 
 Stop the statsd child, callback indicates it has exited.
+
+Stopping is optional, the child will self-exit when the parent process exits.

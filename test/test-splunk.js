@@ -28,7 +28,6 @@ tap.test('port missing', function(t) {
 
 tap.test('splunk output', function(t) {
   var splunk = dgram.createSocket('udp4')
-  var udp = dgram.createSocket('udp4');
 
   splunk.bind(0);
 
@@ -38,7 +37,6 @@ tap.test('splunk output', function(t) {
 
     if (sawFoo) {
       splunk.close();
-      udp.close();
       server.stop(function() {
         console.log('statsd: closed');
         t.end();
@@ -63,8 +61,11 @@ tap.test('splunk output', function(t) {
 
     t.ifError(er);
     if (er) throw er;
-    assert(server.port > 0);
-    console.log('send `%s` to %d', msg, server.port);
-    udp.send(msg, 0, msg.length, server.port, '127.0.0.1');
+    t.assert(server.port > 0);
+    t.assert(server.send('foo.count', 9));
   }
+});
+
+process.on('exit', function() {
+  console.log('PASS');
 });
