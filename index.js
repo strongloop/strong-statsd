@@ -196,18 +196,20 @@ Statsd.prototype.start = function start(callback) {
 
     self.url = util.format('statsd://:%d/%s', self.port, self.statsdScope);
 
+    self.child.unref();
+    // XXX(sam) no documented way to unref the ipc channel :-(
+    self.child._channel.unref();
+
+    if (self.silent) {
+      self.child.stdin.unref();
+      self.child.stdout.unref();
+      self.child.stderr.unref();
+    }
+
     callback();
   }
 
-  this.child.unref();
-  // XXX(sam) no documented way to unref the ipc channel :-(
-  this.child._channel.unref();
-
   if (this.silent) {
-    this.child.stdin.unref();
-    this.child.stdout.unref();
-    this.child.stderr.unref();
-
     // fork() documents an 'encoding' option, but doesn't implement it :-(
     this.child.stdout.setEncoding('utf-8');
     this.child.stderr.setEncoding('utf-8');
