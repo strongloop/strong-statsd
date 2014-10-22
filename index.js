@@ -68,7 +68,7 @@ Statsd.prototype.backend = function backend(url) {
   switch (_.protocol) {
     case 'statsd:': {
       if (this.config.backends.length) {
-        return {error: 'statsd is incompatible with other backends'};
+        return die('statsd is incompatible with other backends');
       }
       this.statsdHost = _.hostname || 'localhost';
       this.statsdPort = _.port || 8125;
@@ -105,7 +105,7 @@ Statsd.prototype.backend = function backend(url) {
     }
     case 'splunk:': {
       if (!_.port) {
-        return {error: 'splunk port missing'};
+        return die('splunk port missing');
       }
       backend = "statsd-udpkv-backend";
       config = {
@@ -122,7 +122,7 @@ Statsd.prototype.backend = function backend(url) {
       if (level) {
         // Must be valid, or statsd/syslog will abort.
         if (!/^LOG_/.test(level) || !(level in syslog)) {
-          return {error: 'syslog priority invalid'};
+          return die('syslog priority invalid');
         }
       }
       // Note syslog doesn't use a backend, for some reason.
@@ -137,15 +137,21 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     default:
-      return {error: 'url format unknown'};
+      return die('url format unknown');
   }
 
   if (this.statsdHost)
-    return {error: 'statsd is incompatible with other backends'};
+    return die('statsd is incompatible with other backends');
 
   if (backend)
     this.config.backends.push(backend);
   this.config = util._extend(this.config, config);
+
+  function die(error) {
+    var er = Error(error);
+    er.url = url;
+    throw er;
+  }
 
   return this;
 };

@@ -49,7 +49,9 @@ Backend URL formats:
 - `splunk://[<host>]:<port>`: write using a UDP key value protocol to splunk,
   host defaults to localhost, and port is mandatory, since the protocol has no
   assigned port.
-  
+
+Throws on error in URL format, returns self on success.
+
 ### statsd.start(callback)
 
 Starts statsd child process, callback indicates when it is started, and the

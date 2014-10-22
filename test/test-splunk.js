@@ -21,9 +21,12 @@ checkUrl('splunk:example:7', 7, 'example');
 
 tap.test('port missing', function(t) {
   var server = statsd();
-  var er = server.backend('splunk://example');
-  t.equal(er.error, 'splunk port missing');
-  t.end();
+  try {
+    server.backend('splunk://example');
+  } catch(er) {
+    t.equal(er.message, 'splunk port missing');
+    t.end();
+  }
 });
 
 tap.test('splunk output', function(t) {

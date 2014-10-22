@@ -24,9 +24,12 @@ checkUrl('syslog:?application=X&priority=LOG_WARNING', 'X', 'LOG_WARNING');
 
 tap.test('priority invalid', function(t) {
   var server = statsd();
-  var er = server.backend('syslog:?priority=LOG_WARN');
-  t.equal(er.error, 'syslog priority invalid');
-  t.end();
+  try {
+    server.backend('syslog:?priority=LOG_WARN');
+  } catch(er) {
+    t.equal(er.message, 'syslog priority invalid');
+    t.end();
+  }
 });
 
 
