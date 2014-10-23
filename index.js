@@ -83,7 +83,7 @@ Statsd.prototype.backend = function backend(url) {
       // We won't be using a backend, return immediately.
       return this;
     }
-    case 'console:': {
+    case 'debug:': {
       backend = "./backends/console";
       config = {
         console: {
