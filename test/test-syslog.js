@@ -52,6 +52,6 @@ tap.test('syslog output', function(t) {
   });
 });
 
-process.on('exit', function() {
-  console.log('PASS');
+process.on('exit', function(code) {
+  if (code == 0) console.log('PASS');
 });

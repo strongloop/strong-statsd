@@ -20,6 +20,6 @@ statsd.child.stdout.on('data', function(data) {
   }
 });
 
-process.on('exit', function() {
-  console.log('PASS');
+process.on('exit', function(code) {
+  if (code == 0) console.log('PASS');
 });
