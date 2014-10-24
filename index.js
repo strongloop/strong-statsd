@@ -2,6 +2,7 @@ var assert = require('assert');
 var debug = require('debug')('strong-statsd');
 var fork = require('child_process').fork;
 var fs = require('fs');
+var fmt = require('util').format;
 var ipc = require('strong-control-channel/process');
 var parse = require('url').parse;
 var path = require('path');
@@ -55,6 +56,8 @@ function Statsd(options) {
   this._send = null;
 }
 
+// XXX(sam) would be better to return a fully expanded URL (with all the
+// defaults written in) then to return self
 Statsd.prototype.backend = function backend(url) {
   var backend;
   var config = {};
@@ -90,6 +93,16 @@ Statsd.prototype.backend = function backend(url) {
           prettyprint: 'pretty' in _.query && _.query.pretty !== 'false'
         }
       };
+      break;
+    }
+    case 'log:': {
+      backend = require.resolve('./lib/backends/log');
+      config = {
+        log: {
+          file: (_.hostname || '') + (_.pathname || '')
+        }
+      };
+      config.log.file = config.log.file || '-';
       break;
     }
     case 'graphite:': {
@@ -180,6 +193,12 @@ Statsd.prototype.start = function start(callback) {
 
   this.child = fork(stats, [this.configFile], {silent: this.silent});
 
+  this.child.once('exit', function(code, signal) {
+    if (self.stopped) return; // We stopped it
+    // XXX(sam) temporary hack, we must emit an error event
+    throw Error(fmt('stats died unexpectedly with %s', signal || code));
+  });
+
   var channel = ipc.attach(onRequest, this.child);
 
   function onRequest(req, respond) {
@@ -200,7 +219,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = util.format('statsd://:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
 
     self.child.unref();
     // XXX(sam) no documented way to unref the ipc channel :-(
@@ -239,6 +258,8 @@ Statsd.prototype.send = function send(name, value) {
 };
 
 Statsd.prototype.stop = function stop(callback) {
+  this.stopped = true;
+
   callback = callback || function(){};
   if (!this.child) {
     process.nextTick(callback);

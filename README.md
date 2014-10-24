@@ -33,6 +33,10 @@ Backend URL formats:
   backends below. In other words, you can use backends, or raw statsd, but not
   both (for now).
 
+- `log:[<file>]`: log metrics to FILE, which may be `-` to indicate stdout (FILE
+  defaults to `-`). Format is `ISOTIMESTAMP METRIC=VALUE (TYPE)`, where TYPE is
+  one of count, gauge, or ms (a timer interval in milliseconds).
+
 - `debug:[?pretty[=<true|false>]]`: json dump to stdout for testing and
   debugging backends. Pretty output is formatted as multi-line with color,
   otherwise it's single line.
