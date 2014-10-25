@@ -32,6 +32,6 @@ checkUrl('statsd:example/scope', 8125, 'example', 'scope');
 checkUrl('statsd:example:7/scope', 7, 'example', 'scope');
 
 
-process.on('exit', function() {
-  console.log('PASS');
+process.on('exit', function(code) {
+  if (code == 0) console.log('PASS');
 });

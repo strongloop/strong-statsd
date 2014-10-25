@@ -12,17 +12,17 @@ function checkUrl(url, color) {
   });
 };
 
-checkUrl('console', false);
-checkUrl('console:', false);
-checkUrl('console:?', false);
-checkUrl('console:?pretty', true);
-checkUrl('console:?pretty=true', true);
-checkUrl('console:?pretty=anything', true);
-checkUrl('console:?pretty=false', false);
+checkUrl('debug', false);
+checkUrl('debug:', false);
+checkUrl('debug:?', false);
+checkUrl('debug:?pretty', true);
+checkUrl('debug:?pretty=true', true);
+checkUrl('debug:?pretty=anything', true);
+checkUrl('debug:?pretty=false', false);
 
-tap.test('console output', function(t) {
+tap.test('debug output', function(t) {
   var server = statsd({silent: true});
-  server.backend('console');
+  server.backend('debug');
 
   server.start(function(er) {
     t.ifError(er);
@@ -50,6 +50,6 @@ tap.test('console output', function(t) {
   });
 });
 
-process.on('exit', function() {
-  console.log('PASS');
+process.on('exit', function(code) {
+  if (code == 0) console.log('PASS');
 });

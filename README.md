@@ -33,8 +33,12 @@ Backend URL formats:
   backends below. In other words, you can use backends, or raw statsd, but not
   both (for now).
 
-- `console:[?pretty[=<true|false>]]`: json dump to console, mostly useful for
-  testing and debugging. Pretty output is formatted as multi-line with color,
+- `log:[<file>]`: log metrics to FILE, which may be `-` to indicate stdout (FILE
+  defaults to `-`). Format is `ISOTIMESTAMP METRIC=VALUE (TYPE)`, where TYPE is
+  one of count, gauge, or ms (a timer interval in milliseconds).
+
+- `debug:[?pretty[=<true|false>]]`: json dump to stdout for testing and
+  debugging backends. Pretty output is formatted as multi-line with color,
   otherwise it's single line.
 
 - `graphite://[<host>][:<port>]`: forward to
@@ -49,7 +53,9 @@ Backend URL formats:
 - `splunk://[<host>]:<port>`: write using a UDP key value protocol to splunk,
   host defaults to localhost, and port is mandatory, since the protocol has no
   assigned port.
-  
+
+Throws on error in URL format, returns self on success.
+
 ### statsd.start(callback)
 
 Starts statsd child process, callback indicates when it is started, and the

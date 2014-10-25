@@ -2,6 +2,7 @@ var assert = require('assert');
 var debug = require('debug')('strong-statsd');
 var fork = require('child_process').fork;
 var fs = require('fs');
+var fmt = require('util').format;
 var ipc = require('strong-control-channel/process');
 var parse = require('url').parse;
 var path = require('path');
@@ -55,6 +56,8 @@ function Statsd(options) {
   this._send = null;
 }
 
+// XXX(sam) would be better to return a fully expanded URL (with all the
+// defaults written in) then to return self
 Statsd.prototype.backend = function backend(url) {
   var backend;
   var config = {};
@@ -68,7 +71,7 @@ Statsd.prototype.backend = function backend(url) {
   switch (_.protocol) {
     case 'statsd:': {
       if (this.config.backends.length) {
-        return {error: 'statsd is incompatible with other backends'};
+        return die('statsd is incompatible with other backends');
       }
       this.statsdHost = _.hostname || 'localhost';
       this.statsdPort = _.port || 8125;
@@ -83,13 +86,23 @@ Statsd.prototype.backend = function backend(url) {
       // We won't be using a backend, return immediately.
       return this;
     }
-    case 'console:': {
+    case 'debug:': {
       backend = "./backends/console";
       config = {
         console: {
           prettyprint: 'pretty' in _.query && _.query.pretty !== 'false'
         }
       };
+      break;
+    }
+    case 'log:': {
+      backend = require.resolve('./lib/backends/log');
+      config = {
+        log: {
+          file: (_.hostname || '') + (_.pathname || '')
+        }
+      };
+      config.log.file = config.log.file || '-';
       break;
     }
     case 'graphite:': {
@@ -105,7 +118,7 @@ Statsd.prototype.backend = function backend(url) {
     }
     case 'splunk:': {
       if (!_.port) {
-        return {error: 'splunk port missing'};
+        return die('splunk port missing');
       }
       backend = "statsd-udpkv-backend";
       config = {
@@ -122,7 +135,7 @@ Statsd.prototype.backend = function backend(url) {
       if (level) {
         // Must be valid, or statsd/syslog will abort.
         if (!/^LOG_/.test(level) || !(level in syslog)) {
-          return {error: 'syslog priority invalid'};
+          return die('syslog priority invalid');
         }
       }
       // Note syslog doesn't use a backend, for some reason.
@@ -137,15 +150,21 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     default:
-      return {error: 'url format unknown'};
+      return die('url format unknown');
   }
 
   if (this.statsdHost)
-    return {error: 'statsd is incompatible with other backends'};
+    return die('statsd is incompatible with other backends');
 
   if (backend)
     this.config.backends.push(backend);
   this.config = util._extend(this.config, config);
+
+  function die(error) {
+    var er = Error(error);
+    er.url = url;
+    throw er;
+  }
 
   return this;
 };
@@ -174,6 +193,12 @@ Statsd.prototype.start = function start(callback) {
 
   this.child = fork(stats, [this.configFile], {silent: this.silent});
 
+  this.child.once('exit', function(code, signal) {
+    if (self.stopped) return; // We stopped it
+    // XXX(sam) temporary hack, we must emit an error event
+    throw Error(fmt('stats died unexpectedly with %s', signal || code));
+  });
+
   var channel = ipc.attach(onRequest, this.child);
 
   function onRequest(req, respond) {
@@ -194,7 +219,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = util.format('statsd://:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
 
     self.child.unref();
     // XXX(sam) no documented way to unref the ipc channel :-(
@@ -233,6 +258,8 @@ Statsd.prototype.send = function send(name, value) {
 };
 
 Statsd.prototype.stop = function stop(callback) {
+  this.stopped = true;
+
   callback = callback || function(){};
   if (!this.child) {
     process.nextTick(callback);

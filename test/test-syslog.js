@@ -24,9 +24,12 @@ checkUrl('syslog:?application=X&priority=LOG_WARNING', 'X', 'LOG_WARNING');
 
 tap.test('priority invalid', function(t) {
   var server = statsd();
-  var er = server.backend('syslog:?priority=LOG_WARN');
-  t.equal(er.error, 'syslog priority invalid');
-  t.end();
+  try {
+    server.backend('syslog:?priority=LOG_WARN');
+  } catch(er) {
+    t.equal(er.message, 'syslog priority invalid');
+    t.end();
+  }
 });
 
 
@@ -49,6 +52,6 @@ tap.test('syslog output', function(t) {
   });
 });
 
-process.on('exit', function() {
-  console.log('PASS');
+process.on('exit', function(code) {
+  if (code == 0) console.log('PASS');
 });
