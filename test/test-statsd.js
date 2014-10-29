@@ -5,7 +5,7 @@ var util = require('util');
 var Statsd = require('../');
 
 tap.test('statsd output', function(t) {
-  t.plan(3);
+  t.plan(4);
 
   var statsd = dgram.createSocket('udp4')
 
@@ -39,9 +39,12 @@ tap.test('statsd output', function(t) {
     return 'APP';
   }
 
+  var statsdPort;
+  var statsdUrl;
+
   function statsdReady() {
-    var statsdPort = statsd.address().port;
-    var statsdUrl = util.format('statsd://:%d/%a', statsdPort);
+    statsdPort = statsd.address().port;
+    statsdUrl = util.format('statsd://:%d/%a', statsdPort);
 
     server.backend(statsdUrl);
     server.start(onStart);
@@ -50,6 +53,7 @@ tap.test('statsd output', function(t) {
   function onStart(er) {
     t.ifError(er);
     t.assert(server.send('foo.count', 9));
+    t.equal(server.url, util.format('statsd://localhost:%d/%a', statsdPort));
   }
 });
 
