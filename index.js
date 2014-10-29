@@ -180,6 +180,8 @@ Statsd.prototype.start = function start(callback) {
       host: this.statsdHost,
       scope: scope,
     });
+    this.url = fmt('statsd://%s:%d/%s',
+      this.statsdHost, this.statsdPort, this.statsdScope);
     process.nextTick(callback);
     return this;
   }
