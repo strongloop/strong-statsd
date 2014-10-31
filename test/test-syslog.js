@@ -2,6 +2,19 @@ var assert = require('assert');
 var statsd = require('../');
 var tap = require('tap');
 
+try {
+  require('node-syslog');
+} catch (e) {
+  tap.test('missing syslog support', function(t) {
+    t.throws(function(){
+      var server = statsd();
+      server.backend('syslog');
+    });
+    t.end();
+  });
+  return;
+}
+
 function checkUrl(url, application, priority) {
   tap.test(url, function(t) {
     var server = statsd();

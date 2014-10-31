@@ -8,8 +8,10 @@ var parse = require('url').parse;
 var path = require('path');
 var sender = require('strong-agent-statsd');
 var stats = require.resolve('strong-fork-statsd/stats.js');
-var syslog = require('node-syslog'); // FIXME protect, or use strong-fork-syslog
 var util = require('util');
+
+// FIXME use strong-fork-syslog
+try { var syslog = require('node-syslog'); } catch (e) {}
 
 // Config template:
 // {
@@ -132,6 +134,9 @@ Statsd.prototype.backend = function backend(url) {
     case 'syslog:': {
       // Called level in statsd config, but priority everywhere else. :-(
       var level = _.query.priority;
+      if (!syslog) {
+        return die('node-syslog not installed or not compiled');
+      }
       if (level) {
         // Must be valid, or statsd/syslog will abort.
         if (!/^LOG_/.test(level) || !(level in syslog)) {
