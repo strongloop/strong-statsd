@@ -52,9 +52,11 @@ function Statsd(options) {
   this.statsdHost = null;
   this.statsdPort = null;
   this.configFile = path.resolve('.statsd.json');
+  this.flushInterval = (options.flushInterval || 15) * 1000;
   this.config = {
     port: this.port,
     debug: this.debug,
+    flushInterval: this.flushInterval,
     dumpMessages: this.debug,
     backends: [], // No backends is valid and useful, see syslog config
   };
