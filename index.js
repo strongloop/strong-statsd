@@ -9,6 +9,7 @@ var path = require('path');
 var sender = require('strong-agent-statsd');
 var stats = require.resolve('strong-fork-statsd/stats.js');
 var util = require('util');
+var EventEmitter = require('events').EventEmitter;
 
 // FIXME use strong-fork-syslog
 try { var syslog = require('node-syslog'); } catch (e) {}
@@ -40,6 +41,8 @@ function Statsd(options) {
   if (!(this instanceof Statsd))
       return new Statsd(options);
 
+  EventEmitter.call(this);
+
   options = util._extend({}, options);
   this.port = 0;
   this.debug = !!options.debug;
@@ -57,6 +60,8 @@ function Statsd(options) {
   };
   this._send = null;
 }
+
+util.inherits(Statsd, EventEmitter);
 
 // XXX(sam) would be better to return a fully expanded URL (with all the
 // defaults written in) then to return self
@@ -154,6 +159,12 @@ Statsd.prototype.backend = function backend(url) {
       };
       break;
     }
+    case 'internal:': {
+      backend = require.resolve('./lib/backends/internal');
+      config = {
+      };
+      break;
+    }
     default:
       return die('url format unknown');
   }
@@ -210,6 +221,12 @@ Statsd.prototype.start = function start(callback) {
 
   function onRequest(req, respond) {
     debug('statsd receiving: %j', req);
+
+    if (req.cmd === 'metrics') {
+      respond({message: 'ok'});
+      self.emit('metrics', req.metrics);
+      return;
+    }
 
     assert.equal(req.cmd, 'address');
     assert(!self.address);
