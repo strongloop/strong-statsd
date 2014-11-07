@@ -5,8 +5,7 @@ var fs = require('fs');
 var statsd = require('../');
 var tap = require('tap');
 
-// Each report takes about 15 sec, there are 3
-tap.test('internal backend', {timeout: 3 * 20 * 1000}, function(t) {
+tap.test('internal backend', function(t) {
   var scope = 'app.host.3';
   var server = statsd({
     // scope expansion is MANDATORY for internal use
@@ -24,11 +23,13 @@ tap.test('internal backend', {timeout: 3 * 20 * 1000}, function(t) {
     t.assert(server.port > 0);
     t.equal(expectedUrl, server.url);
     t.assert(server.send('foo.count', -10));
-    t.assert(server.send('foo.count', -9));
     t.assert(server.send('foo.timer', 123));
-    t.assert(server.send('foo.timer', 7));
     t.assert(server.send('foo.value', 4));
-    t.assert(server.send('foo.value', 4.5));
+    setTimeout(function() {
+      t.assert(server.send('foo.count', -9));
+      t.assert(server.send('foo.timer', 7));
+      t.assert(server.send('foo.value', 4.5));
+    }, 200);
   });
 
   server.on('metrics', function(metrics) {
@@ -68,7 +69,9 @@ tap.test('internal backend', {timeout: 3 * 20 * 1000}, function(t) {
     });
 
     t.assert(server.send('foo.count', -4));
-    t.assert(server.send('foo.count', 2));
+    setTimeout(function() {
+      t.assert(server.send('foo.count', 2));
+    }, 200);
     t.assert(server.send('foo.timer', 5));
     t.assert(server.send('foo.value', -9));
     server.once('metrics', thirdReport);
