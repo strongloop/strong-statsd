@@ -21,6 +21,8 @@ Options:
   if the `statsd:` backend URL is used, it can provide a scope that will
   override this option)
 - expandScope: function to call on scope before using it as a prefix
+- flushInterval: accumulated metrics will be processed and emitted at this
+  interval, in seconds (default is 15)
 
 ### statsd.backend(url)
 

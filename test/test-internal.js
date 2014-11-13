@@ -1,5 +1,5 @@
 var assert = require('assert');
-var debug = require('debug')('strong-statsd:debug');
+var debug = require('debug')('strong-statsd:test');
 var fmt = require('util').format;
 var fs = require('fs');
 var statsd = require('../');
@@ -10,6 +10,7 @@ tap.test('internal backend', function(t) {
   var server = statsd({
     // scope expansion is MANDATORY for internal use
     scope: scope,
+    flushInterval: 2,
   });
   var startTime = Math.round(new Date().getTime() / 1000); // from statsd
   var pass;
@@ -22,11 +23,13 @@ tap.test('internal backend', function(t) {
     t.assert(server.port > 0);
     t.equal(expectedUrl, server.url);
     t.assert(server.send('foo.count', -10));
-    t.assert(server.send('foo.count', -9));
     t.assert(server.send('foo.timer', 123));
-    t.assert(server.send('foo.timer', 7));
     t.assert(server.send('foo.value', 4));
-    t.assert(server.send('foo.value', 4.5));
+    setTimeout(function() {
+      t.assert(server.send('foo.count', -9));
+      t.assert(server.send('foo.timer', 7));
+      t.assert(server.send('foo.value', 4.5));
+    }, 200);
   });
 
   server.on('metrics', function(metrics) {
@@ -50,15 +53,40 @@ tap.test('internal backend', function(t) {
     server.once('metrics', secondReport);
   }
 
+  var second;
+
+  // In second report, we see the values after the accumulators are reset and no
+  // new values have been sent during the flush interval.
   function secondReport(metrics) {
+    second = metrics;
     t.assert(metrics.timestamp > first.timestamp);
     t.deepEqual(Object.keys(metrics), ['processes', 'timestamp']);
     t.deepEqual(Object.keys(metrics.processes), ['3']);
     t.deepEqual(metrics.processes['3'], {
-      counters: { 'foo.count': 0 }, // XXX(sam) I think this is odd
-      timers: { 'foo.timer': [] }, // No timers, so no values
-      gauges: { 'foo.value': 4.5 }, // Last gauge value is sticky
+      counters: { 'foo.count': 0 },
+      timers: { 'foo.timer': [] },
+      gauges: { 'foo.value': 4.5 }, // For gauges, last value is preserved
     });
+
+    t.assert(server.send('foo.count', -4));
+    setTimeout(function() {
+      t.assert(server.send('foo.count', 2));
+    }, 200);
+    t.assert(server.send('foo.timer', 5));
+    t.assert(server.send('foo.value', -9));
+    server.once('metrics', thirdReport);
+  }
+
+  function thirdReport(metrics) {
+    t.assert(metrics.timestamp > second.timestamp);
+    t.deepEqual(Object.keys(metrics), ['processes', 'timestamp']);
+    t.deepEqual(Object.keys(metrics.processes), ['3']);
+    t.deepEqual(metrics.processes['3'], {
+      counters: { 'foo.count': -2 },
+      timers: { 'foo.timer': [5] },
+      gauges: { 'foo.value': -9 },
+    });
+
     server.stop();
     pass = true;
   }
@@ -71,5 +99,5 @@ tap.test('internal backend', function(t) {
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  if (code == 0) console.log('EXIT');
 });
