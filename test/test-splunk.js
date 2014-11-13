@@ -29,6 +29,19 @@ tap.test('port missing', function(t) {
   }
 });
 
+tap.test('splunk invalid host', function(t) {
+  var server = statsd({silent: false, debug: true});
+  server.backend('splunk://name.does.not.exist:12345');
+  server.start(onStart);
+
+  function onStart(er) {
+    t.ifError(er);
+    if (er) throw er;
+
+    t.assert(false, 'XXX TBD, need to get notified of exit');
+  }
+});
+
 tap.test('splunk output', function(t) {
   var splunk = dgram.createSocket('udp4')
 
