@@ -143,7 +143,7 @@ Statsd.prototype.backend = function backend(url) {
       if (!_.port) {
         return die('splunk port missing');
       }
-      backend = "statsd-udpkv-backend";
+      backend = "./backends/splunk";
       config = {
         udpkv: {
           host: _.hostname || 'localhost',

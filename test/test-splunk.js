@@ -9,7 +9,7 @@ function checkUrl(url, port, host) {
   tap.test(url, function(t) {
     var server = statsd();
     t.equal(server.backend(url), server, 'returns this');
-    t.deepEqual(server.config.backends, ['statsd-udpkv-backend'], 'backend');
+    t.deepEqual(server.config.backends, ['./backends/splunk'], 'backend');
     t.deepEqual(server.config.udpkv.port, port, 'port');
     t.deepEqual(server.config.udpkv.host, host, 'host');
     t.end();
@@ -19,6 +19,21 @@ function checkUrl(url, port, host) {
 checkUrl('splunk://:7', 7, 'localhost');
 checkUrl('splunk://example:7', 7, 'example');
 checkUrl('splunk:example:7', 7, 'example');
+
+tap.test('splunk invalid host', function(t) {
+  var server = statsd({silent: false, debug: true, flushInterval: 2});
+  server.backend('splunk://name.does.not.exist:12345');
+  server.start(onStart);
+
+  var rx = RegExp(
+    'Failed to load backend: splunk.*' +
+    'lookup.*name.does.not.exist.*getaddrinfo.*'
+  );
+  function onStart(er) {
+    t.assert(rx.test(er.message));
+    t.end();
+  }
+});
 
 tap.test('port missing', function(t) {
   var server = statsd();
