@@ -1,7 +1,7 @@
 {
   "name": "strong-statsd",
   "description": "wrapper to manage an etsty/statsd child process",
-  "version": "1.0.0",
+  "version": "1.0.0-initial",
   "keywords": [
     "StrongLoop",
     "agent",
