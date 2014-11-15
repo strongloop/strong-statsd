@@ -1,1 +1,4 @@
+.statsd.json
+_.log
 node_modules
+npm-debug.log
