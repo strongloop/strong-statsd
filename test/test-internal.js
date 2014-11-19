@@ -88,15 +88,14 @@ tap.test('internal backend', function(t) {
       gauges: { 'foo.value': -9 },
     });
 
-    server.stop();
+    server.stop(onStop);
     pass = true;
   }
 
-  server.child.on('exit', function(code) {
-    t.equal(code, 0);
+  function onStop() {
     t.assert(pass);
     t.end();
-  });
+  }
 });
 
 process.on('exit', function(code) {

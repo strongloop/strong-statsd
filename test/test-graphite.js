@@ -34,7 +34,7 @@ tap.test('graphite output', function(t) {
   function onConnect(sock) {
     sock.on('data', function(data) {
       var sawFoo = /stats.counters.foo/.test(data);
-      console.log('graphite done? %j <%s>', sawFoo, data);
+      console.log('graphite done? %j <\n%s>', sawFoo, data);
 
       if (sawFoo) {
         graphite.close(function() { console.log('graphite: closed'); });
@@ -52,7 +52,11 @@ tap.test('graphite output', function(t) {
     server.start(onStart);
   });
 
-  var server = statsd({silent: false, debug: true});
+  var server = statsd({
+    silent: false,
+    debug: true,
+    flushInterval: 2,
+  });
 
   function onStart(er) {
     t.ifError(er);

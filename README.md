@@ -15,7 +15,6 @@ Constructor.
 
 Options:
 
-- silent: whether to pipe stdio to parent, default is false, log to stdout
 - debug: cause statsd to log debug messages
 - scope: prefix to add before all metric names (default is `""`, but also,
   if the `statsd:` backend URL is used, it can provide a scope that will

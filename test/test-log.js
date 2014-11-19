@@ -11,6 +11,7 @@ function checkUrl(url, file) {
     var server = statsd();
     t.equal(server.backend(url), server, 'returns this');
     t.deepEqual(server.config.backends, [LOG], 'backend');
+    delete server.config.log.stdout;
     t.deepEqual(server.config.log, {file: file}, 'file');
     t.end();
   });
@@ -24,29 +25,26 @@ checkUrl('log:/file.log', '/file.log');
 checkUrl('log:/some/file.log', '/some/file.log');
 checkUrl('log:../file.log', '../file.log');
 
-/*
-Need to fix error handling for this to work
 tap.test('log output to invalid file', function(t) {
   var server = statsd({silent: false});
 
   server.backend('log:/no/such/path/will/exist');
 
-  server.start(function(er) {
-    t.ifError(er);
-    t.assert(server.port > 0);
-    t.assert(/^statsd:\/\/:\d+\/$/.test(server.url), server.url);
-  });
+  var expect = RegExp(
+    'Failed to load backend: log (.*' +
+    'no such file or directory.*' +
+    '/no/such/path/will/exist.*)');
 
-  server.child.on('exit', function(code) {
-    t.equal(code, 0);
-    t.assert(seen >= 3);
+  server.start(function(er) {
+    console.log('expected error:', er);
+    t.assert(er instanceof Error);
+    t.assert(expect.test(String(er)));
     t.end();
   });
 });
-*/
 
 tap.test('log output to file', function(t) {
-  var server = statsd({silent: false});
+  var server = statsd({silent: false, flushInterval: 2});
 
   server.backend('log:_.log');
 
@@ -75,19 +73,18 @@ tap.test('log output to file', function(t) {
 
     if (seen >= 3) {
       clearInterval(poll);
-      server.stop();
+      server.stop(onStop);
     }
   }, 5 * 1000);
 
-  server.child.on('exit', function(code) {
-    t.equal(code, 0);
+  function onStop() {
     t.assert(seen >= 3);
     t.end();
-  });
+  }
 });
 
 tap.test('log output to stdout', function(t) {
-  var server = statsd({silent: true});
+  var server = statsd({silent: true, flushInterval: 2});
 
   server.backend('log');
 
@@ -110,17 +107,16 @@ tap.test('log output to stdout', function(t) {
       console.log('line<%s> seen=%d', line, seen);
 
       if (seen >= 3)
-        server.stop();
+        server.stop(onStop);
     });
   }
 
-  server.child.on('exit', function(code) {
-    t.equal(code, 0);
+  function onStop() {
     t.assert(seen >= 3);
     t.end();
-  });
+  }
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  console.log('EXIT', code);
 });

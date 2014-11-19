@@ -50,7 +50,7 @@ tap.test('splunk output', function(t) {
 
   splunk.on('listening', splunkReady);
 
-  var server = statsd({silent: false, debug: true});
+  var server = statsd({silent: false, debug: true, flushInterval: 2});
 
   function splunkReady() {
     var splunkPort = splunk.address().port;

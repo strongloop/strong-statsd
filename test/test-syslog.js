@@ -48,7 +48,7 @@ tap.test('priority invalid', function(t) {
 
 
 tap.test('syslog output', function(t) {
-  var server = statsd({silent: false, debug: true});
+  var server = statsd({silent: false, debug: true, flushInterval: 1});
   server.backend('syslog');
 
   server.start(function(er) {
@@ -58,14 +58,14 @@ tap.test('syslog output', function(t) {
   // No robust way to check for syslog output, just wait
   // a while to make sure it doesn't crash.
   setTimeout(function() {
-    server.stop();
+    server.stop(onStop);
   }, 2*1000);
 
-  server.child.on('exit', function() {
+  function onStop() {
     t.end();
-  });
+  }
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  console.log('EXIT:', code);
 });

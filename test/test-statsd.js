@@ -32,7 +32,8 @@ tap.test('statsd output', function(t) {
     silent: false,
     debug: true,
     scope: 'X',
-    expandScope: expandScope
+    expandScope: expandScope,
+    flushInterval: 2,
   });
 
   function expandScope(scope) {
