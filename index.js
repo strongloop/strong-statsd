@@ -92,21 +92,14 @@ Statsd.prototype.backend = function backend(url) {
 
   switch (_.protocol) {
     case 'statsd:': {
-      if (this.config.backends.length) {
-        return die('statsd is incompatible with other backends');
-      }
-      this.statsdHost = _.hostname || 'localhost';
-      this.statsdPort = _.port || 8125;
-      var scope = _.pathname;
-      if (!scope || scope === '/') {
-        // leave as default
-      } else {
-        // skip the leading '/'
-        this.statsdScope = scope.slice(1);
-      }
-
-      // We won't be using a backend, return immediately.
-      return this;
+      backend = "./backends/repeater";
+      config = {
+        repeater: [{
+          host: _.hostname || 'localhost',
+          port: _.port || 8125,
+        }]
+      };
+      break;
     }
     case 'debug:': {
       backend = "./backends/console";
@@ -209,18 +202,6 @@ Statsd.prototype.start = function start(callback) {
   var scope = this.statsdScope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
 
-  if (this.statsdHost) {
-    this._send = sender({
-      port: this.statsdPort,
-      host: this.statsdHost,
-      scope: scope,
-    });
-    this.url = fmt('statsd://%s:%d/%s',
-      this.statsdHost, this.statsdPort, this.statsdScope);
-    process.nextTick(callback);
-    return this;
-  }
-
   debug('statsd config: %j', this.config);
 
   this.server = new Server;
@@ -238,7 +219,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('statsd://localhost:%d/%s', self.port, self.statsdScope);
 
     callback();
   }
