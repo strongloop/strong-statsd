@@ -19,6 +19,7 @@
     "tap": "git://github.com/strongloop-forks/node-tap#production"
   },
   "dependencies": {
+    "async": "^0.9.0",
     "debug": "^2.0.0",
     "statsd-udpkv-backend": "^0.2.1",
     "strong-agent-statsd": "^1.0.1"
