@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var statsd = require('../')({debug: true, silent: true});
 var started = false;

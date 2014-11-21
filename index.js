@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var debug = require('debug')('strong-statsd');
 var fork = require('child_process').fork;
