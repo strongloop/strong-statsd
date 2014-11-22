@@ -55,7 +55,7 @@ tap.test('statsd output', function(t) {
   function onStart(er) {
     t.ifError(er);
     t.assert(server.send('foo.count', 9));
-    t.equal(server.url, util.format('statsd://localhost:%d/%a', server.port));
+    t.equal(server.url, util.format('statsd://:%d/%a', server.port));
   }
 });
 

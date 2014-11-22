@@ -7,6 +7,7 @@ assert.equal(statsd.port, 0);
 
 var metric = 'foo.count';
 
+// FIXME should refuse to start with no backends!
 statsd.start(function(er) {
   console.log('started on', statsd.port);
   if (er) throw er;

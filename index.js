@@ -1,7 +1,6 @@
 // Copyright (C) 2014 Strongloop, see LICENSE.md
 var EventEmitter = require('events').EventEmitter;
 var Log = require('./lib/log');
-var Readable = require('stream').Readable;
 var Server = require('./lib/server');
 var assert = require('assert');
 var debug = require('debug')('strong-statsd');
@@ -219,7 +218,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://localhost:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
 
     callback();
   }
