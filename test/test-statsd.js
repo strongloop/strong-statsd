@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var dgram = require('dgram');
 var tap = require('tap');
@@ -30,8 +31,9 @@ tap.test('statsd output', function(t) {
   var server = Statsd({
     silent: false,
     debug: true,
-    scope: 'X',
-    expandScope: expandScope
+    scope: '%a',
+    expandScope: expandScope,
+    flushInterval: 2,
   });
 
   function expandScope(scope) {
@@ -53,10 +55,10 @@ tap.test('statsd output', function(t) {
   function onStart(er) {
     t.ifError(er);
     t.assert(server.send('foo.count', 9));
-    t.equal(server.url, util.format('statsd://localhost:%d/%a', statsdPort));
+    t.equal(server.url, util.format('statsd://localhost:%d/%a', server.port));
   }
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  console.log('EXIT', code);
 });

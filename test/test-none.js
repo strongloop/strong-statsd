@@ -1,6 +1,7 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var Statsd = require('../');
-var statsd = new Statsd({debug: true, silent: true});
+var statsd = new Statsd({debug: true, silent: true, flushInterval: 2});
 
 assert.equal(statsd.port, 0);
 

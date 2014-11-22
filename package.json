@@ -1,15 +1,7 @@
 {
   "name": "strong-statsd",
-  "description": "wrapper to manage an etsty/statsd child process",
+  "description": "statsd wrapper for strong-agent backends",
   "version": "1.0.0",
-  "keywords": [
-    "StrongLoop",
-    "agent",
-    "metrics",
-    "statsd",
-    "strongloop",
-    "strongops"
-  ],
   "repository": {
     "type": "git",
     "url": "git://github.com/strongloop/strong-statsd.git"
@@ -27,10 +19,10 @@
     "tap": "git://github.com/strongloop-forks/node-tap#production"
   },
   "dependencies": {
+    "async": "^0.9.0",
     "debug": "^2.0.0",
-    "strong-agent-statsd": "^1.0.1",
-    "strong-control-channel": "^1.0.0",
-    "strong-fork-statsd": "^1.0.0"
+    "statsd-udpkv-backend": "^0.2.1",
+    "strong-agent-statsd": "^1.0.1"
   },
   "optionalDependencies": {
     "node-syslog": "^1.1.7"

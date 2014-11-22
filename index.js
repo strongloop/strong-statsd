@@ -1,15 +1,17 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
+var EventEmitter = require('events').EventEmitter;
+var Log = require('./lib/log');
+var Readable = require('stream').Readable;
+var Server = require('./lib/server');
 var assert = require('assert');
 var debug = require('debug')('strong-statsd');
+var fmt = require('util').format;
 var fork = require('child_process').fork;
 var fs = require('fs');
-var fmt = require('util').format;
-var ipc = require('strong-control-channel/process');
 var parse = require('url').parse;
 var path = require('path');
 var sender = require('strong-agent-statsd');
-var stats = require.resolve('strong-fork-statsd/stats.js');
 var util = require('util');
-var EventEmitter = require('events').EventEmitter;
 
 // FIXME use strong-fork-syslog
 try { var syslog = require('node-syslog'); } catch (e) {}
@@ -46,7 +48,6 @@ function Statsd(options) {
   options = util._extend({}, options);
   this.port = 0;
   this.debug = !!options.debug;
-  this.silent = !!options.silent;
   this.expandScope = options.expandScope;
   this.statsdScope = options.scope || '';
   this.statsdHost = null;
@@ -61,6 +62,18 @@ function Statsd(options) {
     backends: [], // No backends is valid and useful, see syslog config
   };
   this._send = null;
+  this.server = null;
+  this._socket = null;
+
+  // XXX child.stdout/err structure for bacwards compat
+  this.child = {
+    stdout: new Log('stdout'),
+    stderr: new Log('stderr'), // FIXME unused?
+  };
+  this.logger = {
+    log: this.child.stdout.log.bind(this.child.stdout),
+  };
+
 }
 
 util.inherits(Statsd, EventEmitter);
@@ -79,21 +92,14 @@ Statsd.prototype.backend = function backend(url) {
 
   switch (_.protocol) {
     case 'statsd:': {
-      if (this.config.backends.length) {
-        return die('statsd is incompatible with other backends');
-      }
-      this.statsdHost = _.hostname || 'localhost';
-      this.statsdPort = _.port || 8125;
-      var scope = _.pathname;
-      if (!scope || scope === '/') {
-        // leave as default
-      } else {
-        // skip the leading '/'
-        this.statsdScope = scope.slice(1);
-      }
-
-      // We won't be using a backend, return immediately.
-      return this;
+      backend = "./backends/repeater";
+      config = {
+        repeater: [{
+          host: _.hostname || 'localhost',
+          port: _.port || 8125,
+        }]
+      };
+      break;
     }
     case 'debug:': {
       backend = "./backends/console";
@@ -108,7 +114,8 @@ Statsd.prototype.backend = function backend(url) {
       backend = require.resolve('./lib/backends/log');
       config = {
         log: {
-          file: (_.hostname || '') + (_.pathname || '')
+          file: (_.hostname || '') + (_.pathname || ''),
+          stdout: this.child.stdout,
         }
       };
       config.log.file = config.log.file || '-';
@@ -129,7 +136,7 @@ Statsd.prototype.backend = function backend(url) {
       if (!_.port) {
         return die('splunk port missing');
       }
-      backend = "statsd-udpkv-backend";
+      backend = "./backends/splunk";
       config = {
         udpkv: {
           host: _.hostname || 'localhost',
@@ -164,6 +171,9 @@ Statsd.prototype.backend = function backend(url) {
     case 'internal:': {
       backend = require.resolve('./lib/backends/internal');
       config = {
+        internal: {
+          notify: this.emit.bind(this, 'metrics'),
+        },
       };
       break;
     }
@@ -192,52 +202,16 @@ Statsd.prototype.start = function start(callback) {
   var scope = this.statsdScope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
 
-  if (this.statsdHost) {
-    this._send = sender({
-      port: this.statsdPort,
-      host: this.statsdHost,
-      scope: scope,
-    });
-    this.url = fmt('statsd://%s:%d/%s',
-      this.statsdHost, this.statsdPort, this.statsdScope);
-    process.nextTick(callback);
-    return this;
-  }
+  debug('statsd config: %j', this.config);
 
-  try {
-    debug('statsd configfile %s: %j', this.configFile, this.config);
-    fs.writeFileSync(this.configFile, JSON.stringify(this.config));
-  } catch(er) {
-    return callback(er);
-  }
+  this.server = new Server;
+  this.server.start(this.config, this.logger.log, onStart);
 
-  this.child = fork(stats, [this.configFile], {silent: this.silent});
+  function onStart(er, server) {
+    if (er) return callback(er);
 
-  this.child.once('exit', function(code, signal) {
-    if (self.stopped) return; // We stopped it
-    // XXX(sam) temporary hack, we must emit an error event
-    throw Error(fmt('stats died unexpectedly with %s', signal || code));
-  });
-
-  var channel = ipc.attach(onRequest, this.child);
-
-  function onRequest(req, respond) {
-    debug('statsd receiving: %j', req);
-
-    if (req.cmd === 'metrics') {
-      respond({message: 'ok'});
-      self.emit('metrics', req.metrics);
-      return;
-    }
-
-    assert.equal(req.cmd, 'address');
-    assert(!self.address);
-
-    self.address = req.address;
-    self.port = req.port;
-    self.family = req.family;
-
-    respond({message: 'ok'});
+    self._socket = server;
+    self.port = server.address().port;
 
     self._send = sender({
       port: self.port,
@@ -245,31 +219,9 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
-
-    self.child.unref();
-    // XXX(sam) no documented way to unref the ipc channel :-(
-    self.child._channel.unref();
-
-    if (self.silent) {
-      self.child.stdin.unref();
-      self.child.stdout.unref();
-      self.child.stderr.unref();
-    }
+    self.url = fmt('statsd://localhost:%d/%s', self.port, self.statsdScope);
 
     callback();
-  }
-
-  if (this.silent) {
-    // fork() documents an 'encoding' option, but doesn't implement it :-(
-    this.child.stdout.setEncoding('utf-8');
-    this.child.stderr.setEncoding('utf-8');
-    this.child.stdout.on('data', function(data) {
-      debug('stdout: <%s>', data.trim());
-    });
-    this.child.stderr.on('data', function(data) {
-      debug('stderr: <%s>', data.trim());
-    });
   }
 
   return this;
@@ -287,12 +239,12 @@ Statsd.prototype.stop = function stop(callback) {
   this.stopped = true;
 
   callback = callback || function(){};
-  if (!this.child) {
+  if (!this.server) {
     process.nextTick(callback);
     return;
   }
-  this.child.kill();
-  this.child.once('exit', callback);
+  this.server.stop(callback);
+  this.server = null;
 };
 
 module.exports = Statsd;
