@@ -1,24 +1,23 @@
 // Copyright (C) 2014 Strongloop, see LICENSE.md
+
+var Server = require('./servers/statsd');
+var Client = require('../');
 var assert = require('assert');
-var dgram = require('dgram');
 var tap = require('tap');
 var util = require('util');
-var Statsd = require('../');
 
 tap.test('statsd output', function(t) {
   t.plan(4);
 
-  var statsd = dgram.createSocket('udp4')
+  var server = Server();
 
-  statsd.bind(0);
-
-  statsd.on('message', function(data) {
+  server.on('data', function(data) {
     var sawFoo = /APP.foo.count/.test(data);
     console.log('statsd done? %j <%s>', sawFoo, data);
 
     if (sawFoo) {
-      statsd.close();
-      server.stop(function() {
+      server.close();
+      client.stop(function() {
         console.log('statsd: closed');
         t.assert(sawFoo);
         t.end();
@@ -26,9 +25,9 @@ tap.test('statsd output', function(t) {
     }
   });
 
-  statsd.on('listening', statsdReady);
+  server.on('listening', statsdReady);
 
-  var server = Statsd({
+  var client = Client({
     silent: false,
     debug: true,
     scope: '%a',
@@ -41,21 +40,15 @@ tap.test('statsd output', function(t) {
     return 'APP';
   }
 
-  var statsdPort;
-  var statsdUrl;
-
   function statsdReady() {
-    statsdPort = statsd.address().port;
-    statsdUrl = util.format('statsd://:%d/%a', statsdPort);
-
-    server.backend(statsdUrl);
-    server.start(onStart);
+    client.backend(server.url + '/%a');
+    client.start(onStart);
   }
 
   function onStart(er) {
     t.ifError(er);
-    t.assert(server.send('foo.count', 9));
-    t.equal(server.url, util.format('statsd://:%d/%a', server.port));
+    t.assert(client.send('foo.count', 9));
+    t.equal(client.url, util.format('statsd://:%d/%a', client.port));
   }
 });
 
