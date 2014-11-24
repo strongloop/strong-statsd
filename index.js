@@ -46,11 +46,12 @@ function Statsd(options) {
 
   options = util._extend({}, options);
   this.port = 0;
+  // For a worker we should directly send using statsd to the master using
+  // the internal port.
+  this.internalPort = null;
   this.debug = !!options.debug;
   this.expandScope = options.expandScope;
-  this.statsdScope = options.scope || '';
-  this.statsdHost = null;
-  this.statsdPort = null;
+  this.scope = options.scope || '';
   this.configFile = path.resolve('.statsd.json');
   this.flushInterval = (options.flushInterval || 15) * 1000;
   this.config = {
@@ -86,11 +87,15 @@ Statsd.prototype.backend = function backend(url) {
   if (!_.protocol) {
     // bare word, such as 'console', or 'statsd'
     _.protocol = url + ':';
-    _.pathname = ''; // the bare word also shows up here, clear it
+    // bare word also shows up in path & pathname, clear it
+    _.pathname = '';
+    _.path = '';
   }
 
   switch (_.protocol) {
     case 'statsd:': {
+      if (_.path && _.path !== '/')
+        die('statsd scope not supported');
       backend = "./backends/repeater";
       config = {
         repeater: [{
@@ -157,6 +162,7 @@ Statsd.prototype.backend = function backend(url) {
         }
       }
       // Note syslog doesn't use a backend, for some reason.
+      // FIXME this isn't working, it needs to use a backend
       config = {
         dumpMessages: true,
         log: {
@@ -176,12 +182,18 @@ Statsd.prototype.backend = function backend(url) {
       };
       break;
     }
+    case 'internal-statsd:': {
+      assert(_.port && _.port > 0, 'malformed internal-statsd URL: '+url);
+      this.internalPort = _.port;
+      break;
+    }
     default:
       return die('url format unknown');
   }
 
-  if (this.statsdHost)
-    return die('statsd is incompatible with other backends');
+  if (this.internalPort && this.config.backends.length) {
+    die('misconfigured, cannot be internal and have a backend');
+  }
 
   if (backend)
     this.config.backends.push(backend);
@@ -198,8 +210,22 @@ Statsd.prototype.backend = function backend(url) {
 
 Statsd.prototype.start = function start(callback) {
   var self = this;
-  var scope = this.statsdScope;
+  var scope = this.scope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
+
+  if (this.internalPort) {
+    // Directly send to the internal/master statsd port
+    self._send = sender({
+      port: this.internalPort,
+      host: 'localhost',
+      scope: scope,
+    });
+
+    self.url = fmt('internal-statsd://:%d', self.internalPort);
+
+    process.nextTick(callback);
+    return;
+  }
 
   debug('statsd config: %j', this.config);
 
@@ -218,7 +244,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('internal-statsd://:%d', self.port);
 
     callback();
   }

@@ -17,7 +17,8 @@ function Statsd() {
   });
 
   server.on('listening', function() {
-    self.url = util.format('statsd://:%d', this.address().port);
+    self.port = this.address().port;
+    self.url = util.format('statsd://:%d', self.port);
     console.log('listen:', this.address(), self.url);
     self.emit('listening');
   });
