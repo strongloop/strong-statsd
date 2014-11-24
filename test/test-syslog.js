@@ -19,7 +19,7 @@ try {
 
 function checkUrl(url, application, priority) {
   tap.test(url, function(t) {
-    var server = statsd();
+    var server = statsd({syslog: nodeSyslog});
     t.equal(server.backend(url), server, 'returns this');
     t.deepEqual(server.config.backends[0], './backends/syslog', 'backend');
     t.deepEqual(server.config.syslog.application, application, 'application');
@@ -37,7 +37,7 @@ checkUrl('syslog:?application=X&priority=LOG_WARNING', 'X', 'LOG_WARNING');
 checkUrl('syslog:?application=&priority=', 'statsd', 'LOG_INFO');
 
 tap.test('priority invalid', function(t) {
-  var server = statsd();
+  var server = statsd({syslog: nodeSyslog});
   try {
     server.backend('syslog:?priority=LOG_WARN');
   } catch(er) {
@@ -46,9 +46,19 @@ tap.test('priority invalid', function(t) {
   }
 });
 
+tap.test('syslog not supported', function(t) {
+  var server = statsd();
+  try {
+    server.backend('syslog:');
+  } catch(er) {
+    t.equal(er.message, 'syslog not supported');
+    t.end();
+  }
+});
+
 tap.test('syslog output', function(t) {
   var syslog = Syslog();
-  var server = statsd({flushInterval: 2});
+  var server = statsd({syslog: nodeSyslog, flushInterval: 2});
   server.backend('syslog');
 
   t.plan(8);

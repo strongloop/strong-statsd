@@ -12,9 +12,6 @@ var path = require('path');
 var sender = require('strong-agent-statsd');
 var util = require('util');
 
-// FIXME use strong-fork-syslog
-try { var syslog = require('node-syslog'); } catch (e) {}
-
 // Config template:
 // {
 //   // Start listening for statsd/udp on ephemeral port
@@ -54,12 +51,13 @@ function Statsd(options) {
   this.scope = options.scope || '';
   this.configFile = path.resolve('.statsd.json');
   this.flushInterval = (options.flushInterval || 15) * 1000;
+  this.syslog = options.syslog; // node-syslog dependency must be provided
   this.config = {
     port: this.port,
     debug: this.debug,
     flushInterval: this.flushInterval,
     dumpMessages: this.debug,
-    backends: [], // No backends is valid and useful, see syslog config
+    backends: [],
   };
   this._send = null;
   this.server = null;
@@ -150,13 +148,13 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'syslog:': {
-      if (!syslog) {
-        return die('node-syslog not supported');
+      if (!this.syslog) {
+        return die('syslog not supported');
       }
       var priority = _.query.priority || 'LOG_INFO';
       if (priority) {
         // Must be valid, or syslog will abort.
-        if (!/^LOG_/.test(priority) || !(priority in syslog)) {
+        if (!/^LOG_/.test(priority) || !(priority in this.syslog)) {
           return die('syslog priority invalid');
         }
       }
@@ -165,6 +163,7 @@ Statsd.prototype.backend = function backend(url) {
         syslog: {
           application: _.query.application || 'statsd',
           priority: priority,
+          syslog: this.syslog,
         }
       };
       break;
