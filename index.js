@@ -150,26 +150,22 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'syslog:': {
-      // Called level in statsd config, but priority everywhere else. :-(
-      var level = _.query.priority;
       if (!syslog) {
-        return die('node-syslog not installed or not compiled');
+        return die('node-syslog not supported');
       }
-      if (level) {
-        // Must be valid, or statsd/syslog will abort.
-        if (!/^LOG_/.test(level) || !(level in syslog)) {
+      var priority = _.query.priority || 'LOG_INFO';
+      if (priority) {
+        // Must be valid, or syslog will abort.
+        if (!/^LOG_/.test(priority) || !(priority in syslog)) {
           return die('syslog priority invalid');
         }
       }
-      // Note syslog doesn't use a backend, for some reason.
-      // FIXME this isn't working, it needs to use a backend
+      backend = './backends/syslog';
       config = {
-        dumpMessages: true,
-        log: {
-          backend: 'syslog',
+        syslog: {
           application: _.query.application || 'statsd',
-          level: level || 'LOG_INFO',
-        },
+          priority: priority,
+        }
       };
       break;
     }

@@ -1,10 +1,11 @@
 // Copyright (C) 2014 Strongloop, see LICENSE.md
+var Syslog = require('./servers/syslog');
 var assert = require('assert');
 var statsd = require('../');
 var tap = require('tap');
 
 try {
-  require('node-syslog');
+  var nodeSyslog = require('node-syslog');
 } catch (e) {
   tap.test('missing syslog support', function(t) {
     t.throws(function(){
@@ -20,10 +21,9 @@ function checkUrl(url, application, priority) {
   tap.test(url, function(t) {
     var server = statsd();
     t.equal(server.backend(url), server, 'returns this');
-    t.deepEqual(server.config.dumpMessages, true, 'backend');
-    t.deepEqual(server.config.log.backend, 'syslog', 'backend');
-    t.deepEqual(server.config.log.application, application, 'application');
-    t.deepEqual(server.config.log.level, priority, 'priority');
+    t.deepEqual(server.config.backends[0], './backends/syslog', 'backend');
+    t.deepEqual(server.config.syslog.application, application, 'application');
+    t.deepEqual(server.config.syslog.priority, priority, 'priority');
     t.end();
   });
 };
@@ -34,7 +34,7 @@ checkUrl('syslog:?', 'statsd', 'LOG_INFO');
 checkUrl('syslog:?application=app', 'app', 'LOG_INFO');
 checkUrl('syslog:?priority=LOG_WARNING', 'statsd', 'LOG_WARNING');
 checkUrl('syslog:?application=X&priority=LOG_WARNING', 'X', 'LOG_WARNING');
-checkUrl('syslog:?application=X&priority=LOG_WARNING', 'X', 'LOG_WARNING');
+checkUrl('syslog:?application=&priority=', 'statsd', 'LOG_INFO');
 
 tap.test('priority invalid', function(t) {
   var server = statsd();
@@ -46,24 +46,35 @@ tap.test('priority invalid', function(t) {
   }
 });
 
-
 tap.test('syslog output', function(t) {
-  var server = statsd({silent: false, debug: true, flushInterval: 1});
+  var syslog = Syslog();
+  var server = statsd({flushInterval: 2});
   server.backend('syslog');
 
-  server.start(function(er) {
-    t.ifError(er);
+  t.plan(8);
+
+  syslog.on('init', function(args) {
+    console.log('init:', args);
+    t.equal(args.application, 'statsd'); // XXX(sam) strong-agent?
+    t.equal(args.options, nodeSyslog.LOG_PID | nodeSyslog.LOG_ODELAY);
+    t.equal(args.facility, nodeSyslog.LOG_LOCAL0);
   });
 
-  // No robust way to check for syslog output, just wait
-  // a while to make sure it doesn't crash.
-  setTimeout(function() {
-    server.stop(onStop);
-  }, 2*1000);
+  syslog.on('log', function(args) {
+    console.log('log:', args);
+    if (!/foo.count/.test(args.message))
+      return; // skip statsd internal counts
+    t.equal(args.priority, nodeSyslog.LOG_INFO);
+    t.equal(args.message, 'foo.count=19 (count)');
+    server.stop();
+  });
 
-  function onStop() {
-    t.end();
-  }
+  server.start(function(er) {
+    console.log('start:', er);
+    t.ifError(er);
+    t.assert(server.port > 0);
+    t.assert(server.send('foo.count', 19));
+  });
 });
 
 process.on('exit', function(code) {
