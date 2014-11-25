@@ -6,8 +6,8 @@ var assert = require('assert');
 var tap = require('tap');
 var util = require('util');
 
-tap.test('statsd output', function(t) {
-  t.plan(4);
+tap.test('statsd internal', function(t) {
+  t.plan(7);
 
   var server = Server();
 
@@ -41,14 +41,16 @@ tap.test('statsd output', function(t) {
   }
 
   function statsdReady() {
-    client.backend(server.url);
+    client.backend(util.format('internal-statsd://:%d', server.port));
     client.start(onStart);
   }
 
   function onStart(er) {
     t.ifError(er);
+    t.equal(client.port, 0);
+    t.equal(client.server, null);
     t.assert(client.send('foo.count', 9));
-    t.equal(client.url, util.format('internal-statsd://:%d', client.port));
+    t.equal(client.url, util.format('internal-statsd://:%d', server.port));
   }
 });
 

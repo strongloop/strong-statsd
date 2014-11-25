@@ -16,6 +16,7 @@
     "test": "tap --timeout=100 ./test/test-*"
   },
   "devDependencies": {
+    "node-syslog": "^1.1.7",
     "tap": "git://github.com/strongloop-forks/node-tap#production"
   },
   "dependencies": {
@@ -23,8 +24,5 @@
     "debug": "^2.0.0",
     "statsd-udpkv-backend": "^0.2.1",
     "strong-agent-statsd": "^1.0.1"
-  },
-  "optionalDependencies": {
-    "node-syslog": "^1.1.7"
   }
 }

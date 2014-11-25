@@ -12,9 +12,6 @@ var path = require('path');
 var sender = require('strong-agent-statsd');
 var util = require('util');
 
-// FIXME use strong-fork-syslog
-try { var syslog = require('node-syslog'); } catch (e) {}
-
 // Config template:
 // {
 //   // Start listening for statsd/udp on ephemeral port
@@ -46,19 +43,21 @@ function Statsd(options) {
 
   options = util._extend({}, options);
   this.port = 0;
+  // For a worker we should directly send using statsd to the master using
+  // the internal port.
+  this.internalPort = null;
   this.debug = !!options.debug;
   this.expandScope = options.expandScope;
-  this.statsdScope = options.scope || '';
-  this.statsdHost = null;
-  this.statsdPort = null;
+  this.scope = options.scope || '';
   this.configFile = path.resolve('.statsd.json');
   this.flushInterval = (options.flushInterval || 15) * 1000;
+  this.syslog = options.syslog; // node-syslog dependency must be provided
   this.config = {
     port: this.port,
     debug: this.debug,
     flushInterval: this.flushInterval,
     dumpMessages: this.debug,
-    backends: [], // No backends is valid and useful, see syslog config
+    backends: [],
   };
   this._send = null;
   this.server = null;
@@ -86,11 +85,15 @@ Statsd.prototype.backend = function backend(url) {
   if (!_.protocol) {
     // bare word, such as 'console', or 'statsd'
     _.protocol = url + ':';
-    _.pathname = ''; // the bare word also shows up here, clear it
+    // bare word also shows up in path & pathname, clear it
+    _.pathname = '';
+    _.path = '';
   }
 
   switch (_.protocol) {
     case 'statsd:': {
+      if (_.path && _.path !== '/')
+        die('statsd scope not supported');
       backend = "./backends/repeater";
       config = {
         repeater: [{
@@ -145,25 +148,23 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'syslog:': {
-      // Called level in statsd config, but priority everywhere else. :-(
-      var level = _.query.priority;
-      if (!syslog) {
-        return die('node-syslog not installed or not compiled');
+      if (!this.syslog) {
+        return die('syslog not supported');
       }
-      if (level) {
-        // Must be valid, or statsd/syslog will abort.
-        if (!/^LOG_/.test(level) || !(level in syslog)) {
+      var priority = _.query.priority || 'LOG_INFO';
+      if (priority) {
+        // Must be valid, or syslog will abort.
+        if (!/^LOG_/.test(priority) || !(priority in this.syslog)) {
           return die('syslog priority invalid');
         }
       }
-      // Note syslog doesn't use a backend, for some reason.
+      backend = './backends/syslog';
       config = {
-        dumpMessages: true,
-        log: {
-          backend: 'syslog',
+        syslog: {
           application: _.query.application || 'statsd',
-          level: level || 'LOG_INFO',
-        },
+          priority: priority,
+          syslog: this.syslog,
+        }
       };
       break;
     }
@@ -176,12 +177,18 @@ Statsd.prototype.backend = function backend(url) {
       };
       break;
     }
+    case 'internal-statsd:': {
+      assert(_.port && _.port > 0, 'malformed internal-statsd URL: '+url);
+      this.internalPort = _.port;
+      break;
+    }
     default:
       return die('url format unknown');
   }
 
-  if (this.statsdHost)
-    return die('statsd is incompatible with other backends');
+  if (this.internalPort && this.config.backends.length) {
+    die('misconfigured, cannot be internal and have a backend');
+  }
 
   if (backend)
     this.config.backends.push(backend);
@@ -198,8 +205,22 @@ Statsd.prototype.backend = function backend(url) {
 
 Statsd.prototype.start = function start(callback) {
   var self = this;
-  var scope = this.statsdScope;
+  var scope = this.scope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
+
+  if (this.internalPort) {
+    // Directly send to the internal/master statsd port
+    self._send = sender({
+      port: this.internalPort,
+      host: 'localhost',
+      scope: scope,
+    });
+
+    self.url = fmt('internal-statsd://:%d', self.internalPort);
+
+    process.nextTick(callback);
+    return;
+  }
 
   debug('statsd config: %j', this.config);
 
@@ -218,7 +239,7 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
+    self.url = fmt('internal-statsd://:%d', self.port);
 
     callback();
   }

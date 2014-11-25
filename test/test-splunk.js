@@ -1,6 +1,7 @@
 // Copyright (C) 2014 Strongloop, see LICENSE.md
+
+var Splunk = require('./servers/splunk');
 var assert = require('assert');
-var dgram = require('dgram');
 var statsd = require('../');
 var tap = require('tap');
 var util = require('util');
@@ -46,11 +47,9 @@ tap.test('port missing', function(t) {
 });
 
 tap.test('splunk output', function(t) {
-  var splunk = dgram.createSocket('udp4')
+  var splunk = Splunk();
 
-  splunk.bind(0);
-
-  splunk.on('message', function(data) {
+  splunk.on('data', function(data) {
     var sawFoo = /stat=foo/.test(data);
     console.log('splunk done? %j <%s>', sawFoo, data);
 
@@ -68,18 +67,12 @@ tap.test('splunk output', function(t) {
   var server = statsd({silent: false, debug: true, flushInterval: 2});
 
   function splunkReady() {
-    var splunkPort = splunk.address().port;
-    var splunkUrl = util.format('splunk://:%d', splunkPort);
-
-    server.backend(splunkUrl);
+    server.backend(splunk.url);
     server.start(onStart);
   }
 
   function onStart(er) {
-    var msg = new Buffer('foo:1|c');
-
     t.ifError(er);
-    if (er) throw er;
     t.assert(server.port > 0);
     t.assert(server.send('foo.count', 9));
   }
