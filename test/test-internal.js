@@ -13,7 +13,7 @@ tap.test('internal backend', function(t) {
     scope: scope,
     flushInterval: 2,
   });
-  var startTime = Math.round(new Date().getTime() / 1000); // from statsd
+  var startTime = Math.round(new Date().getTime()); // from statsd
   var pass;
 
   server.backend('internal');
