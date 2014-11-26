@@ -33,5 +33,9 @@ function Graphite(callback) {
     server.close();
   };
 
+  self.unref = function() {
+    server.unref();
+  };
+
   return self;
 }
