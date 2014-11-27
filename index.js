@@ -113,7 +113,7 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'log:': {
-      backend = require.resolve('./lib/backends/log');
+      backend = './backends/log';
       config = {
         log: {
           file: (_.hostname || '') + (_.pathname || ''),
@@ -169,7 +169,7 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'internal:': {
-      backend = require.resolve('./lib/backends/internal');
+      backend = './backends/internal';
       config = {
         internal: {
           notify: this.emit.bind(this, 'metrics'),

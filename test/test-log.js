@@ -4,7 +4,7 @@ var fs = require('fs');
 var statsd = require('../');
 var tap = require('tap');
 
-var LOG = require.resolve('../lib/backends/log');
+var LOG = './backends/log';
 
 function checkUrl(url, file) {
   tap.test(url, function(t) {
