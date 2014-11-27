@@ -19,7 +19,6 @@ function Statsd() {
   server.on('listening', function() {
     self.port = this.address().port;
     self.url = util.format('statsd://:%d', self.port);
-    console.log('listen:', this.address(), self.url);
     self.emit('listening');
   });
 
@@ -33,6 +32,10 @@ function Statsd() {
     });
     if (callback) self.once('close', callback);
     server.close();
+  };
+
+  self.unref = function() {
+    server.unref();
   };
 
   return self;

@@ -28,5 +28,12 @@ function Syslog(syslog) {
     });
   };
 
+  self.unref = function() {
+  };
+
+  self.url = 'syslog:';
+
+  process.nextTick(self.emit.bind(self, 'listening'));
+
   return self;
 }
