@@ -57,7 +57,7 @@ tap.test('syslog not supported', function(t) {
 });
 
 tap.test('syslog output', function(t) {
-  var syslog = Syslog();
+  var syslog = Syslog(nodeSyslog);
   var server = statsd({syslog: nodeSyslog, flushInterval: 2});
   server.backend('syslog');
 
