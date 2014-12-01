@@ -1,8 +1,9 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
+
+var Graphite = require('./servers/graphite');
 var assert = require('assert');
-var net = require('net');
 var statsd = require('../');
 var tap = require('tap');
-var util = require('util');
 
 function checkUrl(url, port, host) {
   tap.test(url, function(t) {
@@ -28,30 +29,29 @@ checkUrl('graphite:example:', 2003, 'example');
 
 
 tap.test('graphite output', function(t) {
-  var graphite = net.createServer(onConnect).listen(0);
+  var graphite = Graphite();
 
-  function onConnect(sock) {
-    sock.on('data', function(data) {
-      var sawFoo = /stats.counters.foo/.test(data);
-      console.log('graphite done? %j <%s>', sawFoo, data);
+  graphite.on('data', function(data) {
+    var sawFoo = /stats.counters.foo/.test(data);
+    console.log('graphite done? %j <\n%s>', sawFoo, data);
 
-      if (sawFoo) {
-        graphite.close(function() { console.log('graphite: closed'); });
-        server.stop(function() { console.log('statsd: closed'); });
-        t.end();
-      }
-    });
-  }
+    if (sawFoo) {
+      graphite.close(function() { console.log('graphite: closed'); });
+      server.stop(function() { console.log('statsd: closed'); });
+      t.end();
+    }
+  });
 
   graphite.on('listening', function() {
-    var graphitePort = this.address().port;
-    var graphiteUrl = util.format('graphite:localhost:%d', graphitePort)
-
-    server.backend(graphiteUrl);
+    server.backend(graphite.url);
     server.start(onStart);
   });
 
-  var server = statsd({silent: false, debug: true});
+  var server = statsd({
+    silent: false,
+    debug: true,
+    flushInterval: 2,
+  });
 
   function onStart(er) {
     t.ifError(er);

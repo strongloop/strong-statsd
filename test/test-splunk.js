@@ -1,5 +1,7 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
+
+var Splunk = require('./servers/splunk');
 var assert = require('assert');
-var dgram = require('dgram');
 var statsd = require('../');
 var tap = require('tap');
 var util = require('util');
@@ -8,7 +10,7 @@ function checkUrl(url, port, host) {
   tap.test(url, function(t) {
     var server = statsd();
     t.equal(server.backend(url), server, 'returns this');
-    t.deepEqual(server.config.backends, ['statsd-udpkv-backend'], 'backend');
+    t.deepEqual(server.config.backends, ['./backends/splunk'], 'backend');
     t.deepEqual(server.config.udpkv.port, port, 'port');
     t.deepEqual(server.config.udpkv.host, host, 'host');
     t.end();
@@ -18,6 +20,21 @@ function checkUrl(url, port, host) {
 checkUrl('splunk://:7', 7, 'localhost');
 checkUrl('splunk://example:7', 7, 'example');
 checkUrl('splunk:example:7', 7, 'example');
+
+tap.test('splunk invalid host', function(t) {
+  var server = statsd({silent: false, debug: true, flushInterval: 2});
+  server.backend('splunk://name.does.not.exist:12345');
+  server.start(onStart);
+
+  var rx = RegExp(
+    'Failed to load backend: splunk.*' +
+    'lookup.*name.does.not.exist.*getaddrinfo.*'
+  );
+  function onStart(er) {
+    t.assert(rx.test(er.message));
+    t.end();
+  }
+});
 
 tap.test('port missing', function(t) {
   var server = statsd();
@@ -30,11 +47,9 @@ tap.test('port missing', function(t) {
 });
 
 tap.test('splunk output', function(t) {
-  var splunk = dgram.createSocket('udp4')
+  var splunk = Splunk();
 
-  splunk.bind(0);
-
-  splunk.on('message', function(data) {
+  splunk.on('data', function(data) {
     var sawFoo = /stat=foo/.test(data);
     console.log('splunk done? %j <%s>', sawFoo, data);
 
@@ -49,21 +64,15 @@ tap.test('splunk output', function(t) {
 
   splunk.on('listening', splunkReady);
 
-  var server = statsd({silent: false, debug: true});
+  var server = statsd({silent: false, debug: true, flushInterval: 2});
 
   function splunkReady() {
-    var splunkPort = splunk.address().port;
-    var splunkUrl = util.format('splunk://:%d', splunkPort);
-
-    server.backend(splunkUrl);
+    server.backend(splunk.url);
     server.start(onStart);
   }
 
   function onStart(er) {
-    var msg = new Buffer('foo:1|c');
-
     t.ifError(er);
-    if (er) throw er;
     t.assert(server.port > 0);
     t.assert(server.send('foo.count', 9));
   }

@@ -15,7 +15,6 @@ Constructor.
 
 Options:
 
-- silent: whether to pipe stdio to parent, default is false, log to stdout
 - debug: cause statsd to log debug messages
 - scope: prefix to add before all metric names (default is `""`, but also,
   if the `statsd:` backend URL is used, it can provide a scope that will
@@ -30,10 +29,8 @@ Specify one or more backends.
 
 Backend URL formats:
 
-- `statsd://[<host>][:<port>][/<scope>]`: publish to a statsd server, this isn't
-  a backend, its a direct UDP publish, and it can not be combined with the other
-  backends below. In other words, you can use backends, or raw statsd, but not
-  both (for now).
+- `statsd://[<host>][:<port>]`: publish metrics to a statsd receiver. The host
+  defaults to `"localhost"`, and the port defaults to `8125`.
 
 - `log:[<file>]`: log metrics to FILE, which may be `-` to indicate stdout (FILE
   defaults to `-`). Format is `ISOTIMESTAMP METRIC=VALUE (TYPE)`, where TYPE is

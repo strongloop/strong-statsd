@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var internal = require('../lib/backends/internal');
 var tap = require('tap');
 var EE = require('events').EventEmitter;
@@ -13,8 +14,10 @@ tap.test('backend loads', function(t) {
 
 function munge(test, input, output) {
   tap.test(test + ' metrics munger', function(t) {
-    var timestamp = Math.round(new Date().getTime() / 1000); // from statsd
-    var metrics = internal.munge(timestamp, input);
+    // Backends get timestamp in seconds, but we expect metrics to have
+    // timestamp in ms, as the js Date expects
+    var timestamp = Math.round(new Date().getTime());
+    var metrics = internal.munge(timestamp/1000, input);
     t.equal(metrics.timestamp, timestamp);
     t.deepEqual(metrics.processes, output);
     t.end();

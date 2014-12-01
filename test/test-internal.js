@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var debug = require('debug')('strong-statsd:test');
 var fmt = require('util').format;
@@ -12,13 +13,13 @@ tap.test('internal backend', function(t) {
     scope: scope,
     flushInterval: 2,
   });
-  var startTime = Math.round(new Date().getTime() / 1000); // from statsd
+  var startTime = Math.round(new Date().getTime()); // from statsd
   var pass;
 
   server.backend('internal');
 
   server.start(function(er) {
-    var expectedUrl = fmt('statsd://:%d/%s', server.port, scope);
+    var expectedUrl = fmt('internal-statsd://:%d', server.port);
     t.ifError(er);
     t.assert(server.port > 0);
     t.equal(expectedUrl, server.url);
@@ -87,15 +88,14 @@ tap.test('internal backend', function(t) {
       gauges: { 'foo.value': -9 },
     });
 
-    server.stop();
+    server.stop(onStop);
     pass = true;
   }
 
-  server.child.on('exit', function(code) {
-    t.equal(code, 0);
+  function onStop() {
     t.assert(pass);
     t.end();
-  });
+  }
 });
 
 process.on('exit', function(code) {

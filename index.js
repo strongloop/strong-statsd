@@ -1,18 +1,16 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
+var EventEmitter = require('events').EventEmitter;
+var Log = require('./lib/log');
+var Server = require('./lib/server');
 var assert = require('assert');
 var debug = require('debug')('strong-statsd');
+var fmt = require('util').format;
 var fork = require('child_process').fork;
 var fs = require('fs');
-var fmt = require('util').format;
-var ipc = require('strong-control-channel/process');
 var parse = require('url').parse;
 var path = require('path');
 var sender = require('strong-agent-statsd');
-var stats = require.resolve('strong-fork-statsd/stats.js');
 var util = require('util');
-var EventEmitter = require('events').EventEmitter;
-
-// FIXME use strong-fork-syslog
-try { var syslog = require('node-syslog'); } catch (e) {}
 
 // Config template:
 // {
@@ -45,22 +43,35 @@ function Statsd(options) {
 
   options = util._extend({}, options);
   this.port = 0;
+  // For a worker we should directly send using statsd to the master using
+  // the internal port.
+  this.internalPort = null;
   this.debug = !!options.debug;
-  this.silent = !!options.silent;
   this.expandScope = options.expandScope;
-  this.statsdScope = options.scope || '';
-  this.statsdHost = null;
-  this.statsdPort = null;
+  this.scope = options.scope || '';
   this.configFile = path.resolve('.statsd.json');
   this.flushInterval = (options.flushInterval || 15) * 1000;
+  this.syslog = options.syslog; // node-syslog dependency must be provided
   this.config = {
     port: this.port,
     debug: this.debug,
     flushInterval: this.flushInterval,
     dumpMessages: this.debug,
-    backends: [], // No backends is valid and useful, see syslog config
+    backends: [],
   };
   this._send = null;
+  this.server = null;
+  this._socket = null;
+
+  // XXX child.stdout/err structure for bacwards compat
+  this.child = {
+    stdout: new Log('stdout'),
+    stderr: new Log('stderr'), // FIXME unused?
+  };
+  this.logger = {
+    log: this.child.stdout.log.bind(this.child.stdout),
+  };
+
 }
 
 util.inherits(Statsd, EventEmitter);
@@ -74,26 +85,23 @@ Statsd.prototype.backend = function backend(url) {
   if (!_.protocol) {
     // bare word, such as 'console', or 'statsd'
     _.protocol = url + ':';
-    _.pathname = ''; // the bare word also shows up here, clear it
+    // bare word also shows up in path & pathname, clear it
+    _.pathname = '';
+    _.path = '';
   }
 
   switch (_.protocol) {
     case 'statsd:': {
-      if (this.config.backends.length) {
-        return die('statsd is incompatible with other backends');
-      }
-      this.statsdHost = _.hostname || 'localhost';
-      this.statsdPort = _.port || 8125;
-      var scope = _.pathname;
-      if (!scope || scope === '/') {
-        // leave as default
-      } else {
-        // skip the leading '/'
-        this.statsdScope = scope.slice(1);
-      }
-
-      // We won't be using a backend, return immediately.
-      return this;
+      if (_.path && _.path !== '/')
+        die('statsd scope not supported');
+      backend = "./backends/repeater";
+      config = {
+        repeater: [{
+          host: _.hostname || 'localhost',
+          port: _.port || 8125,
+        }]
+      };
+      break;
     }
     case 'debug:': {
       backend = "./backends/console";
@@ -105,10 +113,11 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'log:': {
-      backend = require.resolve('./lib/backends/log');
+      backend = './backends/log';
       config = {
         log: {
-          file: (_.hostname || '') + (_.pathname || '')
+          file: (_.hostname || '') + (_.pathname || ''),
+          stdout: this.child.stdout,
         }
       };
       config.log.file = config.log.file || '-';
@@ -129,7 +138,7 @@ Statsd.prototype.backend = function backend(url) {
       if (!_.port) {
         return die('splunk port missing');
       }
-      backend = "statsd-udpkv-backend";
+      backend = "./backends/splunk";
       config = {
         udpkv: {
           host: _.hostname || 'localhost',
@@ -139,43 +148,55 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'syslog:': {
-      // Called level in statsd config, but priority everywhere else. :-(
-      var level = _.query.priority;
-      if (!syslog) {
-        return die('node-syslog not installed or not compiled');
+      if (!this.syslog) {
+        return die('syslog not supported');
       }
-      if (level) {
-        // Must be valid, or statsd/syslog will abort.
-        if (!/^LOG_/.test(level) || !(level in syslog)) {
+      var priority = _.query.priority || 'LOG_INFO';
+      if (priority) {
+        // Must be valid, or syslog will abort.
+        if (!/^LOG_/.test(priority) || !(priority in this.syslog)) {
           return die('syslog priority invalid');
         }
       }
-      // Note syslog doesn't use a backend, for some reason.
+      backend = './backends/syslog';
       config = {
-        dumpMessages: true,
-        log: {
-          backend: 'syslog',
+        syslog: {
           application: _.query.application || 'statsd',
-          level: level || 'LOG_INFO',
-        },
+          priority: priority,
+          syslog: this.syslog,
+        }
       };
       break;
     }
     case 'internal:': {
-      backend = require.resolve('./lib/backends/internal');
+      backend = './backends/internal';
       config = {
+        internal: {
+          notify: this.emit.bind(this, 'metrics'),
+        },
       };
+      break;
+    }
+    case 'internal-statsd:': {
+      assert(_.port && _.port > 0, 'malformed internal-statsd URL: '+url);
+      this.internalPort = _.port;
       break;
     }
     default:
       return die('url format unknown');
   }
 
-  if (this.statsdHost)
-    return die('statsd is incompatible with other backends');
+  if (this.internalPort && this.config.backends.length) {
+    die('misconfigured, cannot be internal and have a backend');
+  }
 
-  if (backend)
+  if (backend) {
+    if (this.config.backends.indexOf(backend) > -1) {
+      throw Error(fmt('%s metrics already configured', _.protocol));
+    }
     this.config.backends.push(backend);
+  }
+
   this.config = util._extend(this.config, config);
 
   function die(error) {
@@ -189,55 +210,40 @@ Statsd.prototype.backend = function backend(url) {
 
 Statsd.prototype.start = function start(callback) {
   var self = this;
-  var scope = this.statsdScope;
+  var scope = this.scope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
 
-  if (this.statsdHost) {
-    this._send = sender({
-      port: this.statsdPort,
-      host: this.statsdHost,
+  if (this.internalPort) {
+    // Directly send to the internal/master statsd port
+    self._send = sender({
+      port: this.internalPort,
+      host: 'localhost',
       scope: scope,
     });
-    this.url = fmt('statsd://%s:%d/%s',
-      this.statsdHost, this.statsdPort, this.statsdScope);
+
+    self.url = fmt('internal-statsd://:%d', self.internalPort);
+
     process.nextTick(callback);
-    return this;
+    return;
   }
 
-  try {
-    debug('statsd configfile %s: %j', this.configFile, this.config);
-    fs.writeFileSync(this.configFile, JSON.stringify(this.config));
-  } catch(er) {
-    return callback(er);
+  debug('statsd config: %j', this.config);
+
+  if (this.config.backends.length < 1) {
+    process.nextTick(function() {
+      callback(Error('start failed: no backends configured'));
+    });
+    return;
   }
 
-  this.child = fork(stats, [this.configFile], {silent: this.silent});
+  this.server = new Server;
+  this.server.start(this.config, this.logger.log, onStart);
 
-  this.child.once('exit', function(code, signal) {
-    if (self.stopped) return; // We stopped it
-    // XXX(sam) temporary hack, we must emit an error event
-    throw Error(fmt('stats died unexpectedly with %s', signal || code));
-  });
+  function onStart(er, server) {
+    if (er) return callback(er);
 
-  var channel = ipc.attach(onRequest, this.child);
-
-  function onRequest(req, respond) {
-    debug('statsd receiving: %j', req);
-
-    if (req.cmd === 'metrics') {
-      respond({message: 'ok'});
-      self.emit('metrics', req.metrics);
-      return;
-    }
-
-    assert.equal(req.cmd, 'address');
-    assert(!self.address);
-
-    self.address = req.address;
-    self.port = req.port;
-    self.family = req.family;
-
-    respond({message: 'ok'});
+    self._socket = server;
+    self.port = server.address().port;
 
     self._send = sender({
       port: self.port,
@@ -245,31 +251,9 @@ Statsd.prototype.start = function start(callback) {
       scope: scope,
     });
 
-    self.url = fmt('statsd://:%d/%s', self.port, self.statsdScope);
-
-    self.child.unref();
-    // XXX(sam) no documented way to unref the ipc channel :-(
-    self.child._channel.unref();
-
-    if (self.silent) {
-      self.child.stdin.unref();
-      self.child.stdout.unref();
-      self.child.stderr.unref();
-    }
+    self.url = fmt('internal-statsd://:%d', self.port);
 
     callback();
-  }
-
-  if (this.silent) {
-    // fork() documents an 'encoding' option, but doesn't implement it :-(
-    this.child.stdout.setEncoding('utf-8');
-    this.child.stderr.setEncoding('utf-8');
-    this.child.stdout.on('data', function(data) {
-      debug('stdout: <%s>', data.trim());
-    });
-    this.child.stderr.on('data', function(data) {
-      debug('stderr: <%s>', data.trim());
-    });
   }
 
   return this;
@@ -287,12 +271,12 @@ Statsd.prototype.stop = function stop(callback) {
   this.stopped = true;
 
   callback = callback || function(){};
-  if (!this.child) {
+  if (!this.server) {
     process.nextTick(callback);
     return;
   }
-  this.child.kill();
-  this.child.once('exit', callback);
+  this.server.stop(callback);
+  this.server = null;
 };
 
 module.exports = Statsd;

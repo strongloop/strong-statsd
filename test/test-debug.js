@@ -1,3 +1,4 @@
+// Copyright (C) 2014 Strongloop, see LICENSE.md
 var assert = require('assert');
 var statsd = require('../');
 var tap = require('tap');
@@ -21,13 +22,13 @@ checkUrl('debug:?pretty=anything', true);
 checkUrl('debug:?pretty=false', false);
 
 tap.test('debug output', function(t) {
-  var server = statsd({silent: true});
+  var server = statsd({silent: true, flushInterval: 2});
   server.backend('debug');
 
   server.start(function(er) {
     t.ifError(er);
     t.assert(server.port > 0);
-    t.assert(/^statsd:\/\/:\d+\/$/.test(server.url), server.url);
+    t.assert(/^internal-statsd:\/\/:\d+$/.test(server.url), server.url);
   });
 
   var flushingStats;
@@ -39,15 +40,15 @@ tap.test('debug output', function(t) {
       console.log('line<%s> %j %j', line, flushingStats, jsonSeen);
 
       if (flushingStats && jsonSeen)
-        server.stop();
+        server.stop(onStop);
     });
   }
 
-  server.child.on('exit', function() {
+  function onStop() {
     t.assert(flushingStats, 'flushing stats');
     t.assert(jsonSeen, 'flushing counter json');
     t.end();
-  });
+  }
 });
 
 process.on('exit', function(code) {
