@@ -1,4 +1,46 @@
-2014-11-15, Version 1.0.0
+2014-12-01, Version 1.1.0
+=========================
+
+ * Use relative backend names, the logs are cleaner (Sam Roberts)
+
+ * test: server APIs made more uniform (Sam Roberts)
+
+ * test: syslog server has addon dependency injected (Sam Roberts)
+
+ * syslog: add debug logging of messages (Sam Roberts)
+
+ * Error if no backends, or multiple backends. (Sam Roberts)
+
+ * test: add unref() to graphite server (Sam Roberts)
+
+ * internal: use javascript milliseconds since epoc (Sam Roberts)
+
+ * syslog: node-syslog dependency is now injected (Sam Roberts)
+
+ * syslog: reimplement as a backend (Sam Roberts)
+
+ * Add copyright header to lib/log.js (Sam Roberts)
+
+ * internal-statsd: reimplement worker/master statsd (Sam Roberts)
+
+ * test: refactor into reuseable test servers (Sam Roberts)
+
+ * Fix incomplete rewrite during rebase (Sam Roberts)
+
+ * statsd: use the repeater to forward metrics (Sam Roberts)
+
+ * splunk: support checking of splunk host name (Sam Roberts)
+
+ * Support async checking of backends (Sam Roberts)
+
+ * Direct use of statsd, not through child process (Sam Roberts)
+
+ * Import core etsty/statsd code (Sam Roberts)
+
+ * Add strongloop copyright headers (Sam Roberts)
+
+
+2014-11-14, Version 1.0.0
 =========================
 
  * package: mark version as -initial (Sam Roberts)

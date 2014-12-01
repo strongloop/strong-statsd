@@ -1,7 +1,7 @@
 {
   "name": "strong-statsd",
   "description": "statsd wrapper for strong-agent backends",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/strongloop/strong-statsd.git"
