@@ -3,11 +3,10 @@
 // for test purposes.
 
 var EE = require('events').EventEmitter;
-var syslog = require('node-syslog');
 
 module.exports = Syslog;
 
-function Syslog() {
+function Syslog(syslog) {
   var self = new EE;
 
   self._init = syslog.init;
@@ -28,6 +27,13 @@ function Syslog() {
       message: message,
     });
   };
+
+  self.unref = function() {
+  };
+
+  self.url = 'syslog:';
+
+  process.nextTick(self.emit.bind(self, 'listening'));
 
   return self;
 }

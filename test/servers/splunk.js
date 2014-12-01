@@ -33,5 +33,9 @@ function Splunk() {
     server.close();
   };
 
+  self.unref = function() {
+    server.unref();
+  };
+
   return self;
 }

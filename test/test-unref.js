@@ -3,6 +3,8 @@ var assert = require('assert');
 var statsd = require('../')({debug: true, silent: true});
 var started = false;
 
+statsd.backend('internal');
+
 // Not enough to hold node alive... but don't unref until AFTER child is
 // started... otherwise parent process might prematurely exit, because there is
 // nothing keeping it alive.

@@ -113,7 +113,7 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'log:': {
-      backend = require.resolve('./lib/backends/log');
+      backend = './backends/log';
       config = {
         log: {
           file: (_.hostname || '') + (_.pathname || ''),
@@ -169,7 +169,7 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'internal:': {
-      backend = require.resolve('./lib/backends/internal');
+      backend = './backends/internal';
       config = {
         internal: {
           notify: this.emit.bind(this, 'metrics'),
@@ -190,8 +190,13 @@ Statsd.prototype.backend = function backend(url) {
     die('misconfigured, cannot be internal and have a backend');
   }
 
-  if (backend)
+  if (backend) {
+    if (this.config.backends.indexOf(backend) > -1) {
+      throw Error(fmt('%s metrics already configured', _.protocol));
+    }
     this.config.backends.push(backend);
+  }
+
   this.config = util._extend(this.config, config);
 
   function die(error) {
@@ -223,6 +228,13 @@ Statsd.prototype.start = function start(callback) {
   }
 
   debug('statsd config: %j', this.config);
+
+  if (this.config.backends.length < 1) {
+    process.nextTick(function() {
+      callback(Error('start failed: no backends configured'));
+    });
+    return;
+  }
 
   this.server = new Server;
   this.server.start(this.config, this.logger.log, onStart);
