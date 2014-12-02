@@ -16,7 +16,7 @@
     "test": "tap --timeout=100 ./test/test-*"
   },
   "devDependencies": {
-    "node-syslog": "^1.1.7",
+    "strong-fork-syslog": "^1.2.1",
     "tap": "git://github.com/strongloop-forks/node-tap#production"
   },
   "dependencies": {

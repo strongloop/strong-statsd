@@ -5,7 +5,7 @@ var statsd = require('../');
 var tap = require('tap');
 
 try {
-  var nodeSyslog = require('node-syslog');
+  var nodeSyslog = require('strong-fork-syslog');
 } catch (e) {
   tap.test('missing syslog support', function(t) {
     t.throws(function(){
