@@ -44,7 +44,7 @@ Backend URL formats:
   [graphite](http://graphite.readthedocs.org/en/latest/), host defaults to
   `"localhost"`, port defaults to `2003`
 
-- `syslog:[?[application=<application>][,priority=<priority>]`: write to
+- `syslog:[?[application=<application>][&priority=<priority>]`: write to
   local system log using `syslog(3)`. The application defaults to `"statsd"`,
   and priority defaults to `"LOG_INFO"`, but can be set to any of `"LOG_DEBUG"`,
   `"LOG_INFO"`, `"LOG_NOTICE"`, `"LOG_WARNING"`, or `"LOG_CRIT"`.
