@@ -1,3 +1,13 @@
+2014-12-05, Version 1.1.1
+=========================
+
+ * package: fix syslog docs (`,` should be `&`) (Sam Roberts)
+
+ * test: replace tap fork with upstream (Ryan Graham)
+
+ * syslog: replace node-syslog with strong-fork-syslog (Ryan Graham)
+
+
 2014-12-01, Version 1.1.0
 =========================
 
