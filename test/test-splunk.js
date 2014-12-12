@@ -73,11 +73,10 @@ tap.test('splunk output', function(t) {
 
   function onStart(er) {
     t.ifError(er);
-    t.assert(server.port > 0);
     t.assert(server.send('foo.count', 9));
   }
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  console.log('EXIT', code);
 });
