@@ -32,7 +32,7 @@ tap.test('graphite output', function(t) {
   var graphite = Graphite();
 
   graphite.on('data', function(data) {
-    var sawFoo = /stats.counters.foo/.test(data);
+    var sawFoo = /stats.counters.a.b.foo/.test(data);
     console.log('graphite done? %j <\n%s>', sawFoo, data);
 
     if (sawFoo) {
@@ -48,6 +48,7 @@ tap.test('graphite output', function(t) {
   });
 
   var server = statsd({
+    scope: 'a.b',
     silent: false,
     debug: true,
     flushInterval: 2,
@@ -55,11 +56,10 @@ tap.test('graphite output', function(t) {
 
   function onStart(er) {
     t.ifError(er);
-    t.assert(server.port > 0);
     t.assert(server.send('foo.count', 19));
   }
 });
 
 process.on('exit', function(code) {
-  if (code == 0) console.log('PASS');
+  console.log('EXIT', code);
 });

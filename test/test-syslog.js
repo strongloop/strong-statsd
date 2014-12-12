@@ -82,7 +82,6 @@ tap.test('syslog output', function(t) {
   server.start(function(er) {
     console.log('start:', er);
     t.ifError(er);
-    t.assert(server.port > 0);
     t.assert(server.send('foo.count', 19));
   });
 });
