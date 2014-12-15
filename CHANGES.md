@@ -1,3 +1,11 @@
+2014-12-15, Version 2.0.0
+=========================
+
+ * fix syslog test plan (Sam Roberts)
+
+ * Use cluster IPC, not UDP, to send stats to master (Sam Roberts)
+
+
 2014-12-05, Version 1.1.1
 =========================
 
