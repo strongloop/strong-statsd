@@ -61,13 +61,13 @@ tap.test('syslog output', function(t) {
   var server = statsd({syslog: nodeSyslog, flushInterval: 2});
   server.backend('syslog');
 
-  t.plan(8);
+  t.plan(7);
 
   syslog.on('init', function(args) {
     console.log('init:', args);
-    t.equal(args.application, 'statsd'); // XXX(sam) strong-agent?
-    t.equal(args.options, nodeSyslog.LOG_PID | nodeSyslog.LOG_ODELAY);
-    t.equal(args.facility, nodeSyslog.LOG_LOCAL0);
+    t.equal(args.application, 'statsd', 'args'); // XXX(sam) strong-agent?
+    t.equal(args.options, nodeSyslog.LOG_PID | nodeSyslog.LOG_ODELAY, 'args');
+    t.equal(args.facility, nodeSyslog.LOG_LOCAL0, 'args');
   });
 
   syslog.on('log', function(args) {
@@ -82,7 +82,6 @@ tap.test('syslog output', function(t) {
   server.start(function(er) {
     console.log('start:', er);
     t.ifError(er);
-    t.assert(server.port > 0);
     t.assert(server.send('foo.count', 19));
   });
 });

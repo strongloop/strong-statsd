@@ -19,9 +19,8 @@ tap.test('internal backend', function(t) {
   server.backend('internal');
 
   server.start(function(er) {
-    var expectedUrl = fmt('internal-statsd://:%d', server.port);
+    var expectedUrl = 'internal-statsd:';
     t.ifError(er);
-    t.assert(server.port > 0);
     t.equal(expectedUrl, server.url);
     t.assert(server.send('foo.count', -10));
     t.assert(server.send('foo.timer', 123));
@@ -87,6 +86,7 @@ tap.test('internal backend', function(t) {
       timers: { 'foo.timer': [5] },
       gauges: { 'foo.value': -9 },
     });
+    assert.equal(metrics.processes['3'].counters['foo.count'], -2);
 
     server.stop(onStop);
     pass = true;

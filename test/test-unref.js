@@ -5,13 +5,16 @@ var started = false;
 
 statsd.backend('internal');
 
+// This test is for a condition that doesn't really apply anymore, since we
+// don't spawn a child process, and we don't create a server socket. Its kept
+// around for the moment to demonstrate refactoring hasn't changed behaviour.
+
 // Not enough to hold node alive... but don't unref until AFTER child is
 // started... otherwise parent process might prematurely exit, because there is
 // nothing keeping it alive.
 statsd.start(function(er) {
-  console.log('started on', statsd.port);
+  console.log('started');
   if (er) throw er;
-  assert(statsd.port > 0);
   started = true;
 });
 

@@ -50,8 +50,7 @@ tap.test('log output to file', function(t) {
 
   server.start(function(er) {
     t.ifError(er);
-    t.assert(server.port > 0);
-    t.assert(/^internal-statsd:\/\/:\d+$/.test(server.url), server.url);
+    t.assert(/^internal-statsd:$/.test(server.url), server.url);
     t.assert(server.send('foo.count', -19));
     t.assert(server.send('foo.timer', 123));
     t.assert(server.send('foo.value', 4.5));
@@ -90,8 +89,7 @@ tap.test('log output to stdout', function(t) {
 
   server.start(function(er) {
     t.ifError(er);
-    t.assert(server.port > 0);
-    t.assert(/^internal-statsd:\/\/:\d+$/.test(server.url), server.url);
+    t.assert(/^internal-statsd:/.test(server.url), server.url);
     t.assert(server.send('foo.count', -19));
     t.assert(server.send('foo.timer', 123));
     t.assert(server.send('foo.value', 4.5));

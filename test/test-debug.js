@@ -27,8 +27,7 @@ tap.test('debug output', function(t) {
 
   server.start(function(er) {
     t.ifError(er);
-    t.assert(server.port > 0);
-    t.assert(/^internal-statsd:\/\/:\d+$/.test(server.url), server.url);
+    t.assert(/^internal-statsd:$/.test(server.url), server.url);
   });
 
   var flushingStats;

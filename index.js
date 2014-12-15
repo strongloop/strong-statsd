@@ -7,9 +7,9 @@ var debug = require('debug')('strong-statsd');
 var fmt = require('util').format;
 var fork = require('child_process').fork;
 var fs = require('fs');
+var ipc = require('./lib/servers/ipc');
 var parse = require('url').parse;
 var path = require('path');
-var sender = require('strong-agent-statsd');
 var util = require('util');
 
 // Config template:
@@ -42,10 +42,7 @@ function Statsd(options) {
   EventEmitter.call(this);
 
   options = util._extend({}, options);
-  this.port = 0;
-  // For a worker we should directly send using statsd to the master using
-  // the internal port.
-  this.internalPort = null;
+  this.forwardMetrics = null;
   this.debug = !!options.debug;
   this.expandScope = options.expandScope;
   this.scope = options.scope || '';
@@ -53,7 +50,6 @@ function Statsd(options) {
   this.flushInterval = (options.flushInterval || 15) * 1000;
   this.syslog = options.syslog; // node-syslog dependency must be provided
   this.config = {
-    port: this.port,
     debug: this.debug,
     flushInterval: this.flushInterval,
     dumpMessages: this.debug,
@@ -61,7 +57,6 @@ function Statsd(options) {
   };
   this._send = null;
   this.server = null;
-  this._socket = null;
 
   // XXX child.stdout/err structure for bacwards compat
   this.child = {
@@ -178,15 +173,14 @@ Statsd.prototype.backend = function backend(url) {
       break;
     }
     case 'internal-statsd:': {
-      assert(_.port && _.port > 0, 'malformed internal-statsd URL: '+url);
-      this.internalPort = _.port;
+      this.forwardMetrics = true;
       break;
     }
     default:
       return die('url format unknown');
   }
 
-  if (this.internalPort && this.config.backends.length) {
+  if (this.forwardMetrics && this.config.backends.length) {
     die('misconfigured, cannot be internal and have a backend');
   }
 
@@ -213,16 +207,9 @@ Statsd.prototype.start = function start(callback) {
   var scope = this.scope;
   scope = this.expandScope ? this.expandScope(scope) : scope;
 
-  if (this.internalPort) {
-    // Directly send to the internal/master statsd port
-    self._send = sender({
-      port: this.internalPort,
-      host: 'localhost',
-      scope: scope,
-    });
-
-    self.url = fmt('internal-statsd://:%d', self.internalPort);
-
+  if (this.forwardMetrics) {
+    self._send = ipc.sender(scope);
+    self.url = 'internal-statsd:';
     process.nextTick(callback);
     return;
   }
@@ -242,16 +229,8 @@ Statsd.prototype.start = function start(callback) {
   function onStart(er, server) {
     if (er) return callback(er);
 
-    self._socket = server;
-    self.port = server.address().port;
-
-    self._send = sender({
-      port: self.port,
-      host: 'localhost',
-      scope: scope,
-    });
-
-    self.url = fmt('internal-statsd://:%d', self.port);
+    self._send = ipc.sender(scope);
+    self.url = 'internal-statsd:';
 
     callback();
   }
