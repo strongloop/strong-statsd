@@ -1,3 +1,9 @@
+2015-01-13, Version 2.0.1
+=========================
+
+ * Fix bad CLA URL in CONTRIBUTING.md (Ryan Graham)
+
+
 2014-12-15, Version 2.0.0
 =========================
 
