@@ -1,4 +1,10 @@
-2015-01-13, Version 2.0.1
+2015-02-12, Version 2.0.2
+=========================
+
+ * Fix timestamps in log backend (Ryan Graham)
+
+
+2015-01-12, Version 2.0.1
 =========================
 
  * Fix bad CLA URL in CONTRIBUTING.md (Ryan Graham)
