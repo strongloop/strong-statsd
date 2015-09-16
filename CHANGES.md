@@ -1,4 +1,10 @@
-2015-02-12, Version 2.0.2
+2015-09-16, Version 2.0.3
+=========================
+
+ * syslog: replace node-syslog with modern-syslog (Sam Roberts)
+
+
+2015-02-11, Version 2.0.2
 =========================
 
  * Fix timestamps in log backend (Ryan Graham)
