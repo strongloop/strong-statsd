@@ -1,3 +1,9 @@
+2016-04-11, Version 2.0.5
+=========================
+
+ * Refer to licenses with a link (Sam Roberts)
+
+
 2015-10-05, Version 2.0.4
 =========================
 
