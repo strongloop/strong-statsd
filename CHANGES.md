@@ -1,3 +1,9 @@
+2016-05-04, Version 2.0.6
+=========================
+
+ * package: do not strip test servers (Sam Roberts)
+
+
 2016-04-11, Version 2.0.5
 =========================
 
