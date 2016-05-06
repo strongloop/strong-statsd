@@ -1,4 +1,8 @@
-// Copyright (C) 2014 Strongloop, see LICENSE.md
+// Copyright IBM Corp. 2014. All Rights Reserved.
+// Node module: strong-statsd
+// This file is licensed under the Artistic License 2.0.
+// License text available at https://opensource.org/licenses/Artistic-2.0
+
 var assert = require('assert');
 var fs = require('fs');
 var statsd = require('../');
