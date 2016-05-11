@@ -36,8 +36,7 @@ tap.test('log output to invalid file', function(t) {
 
   var expect = RegExp(
     'Failed to load backend: log (.*' +
-    'no such file or directory.*' +
-    '/no/such/path/will/exist.*)');
+    'no such file or directory.*)');
 
   server.start(function(er) {
     console.log('expected error:', er);
